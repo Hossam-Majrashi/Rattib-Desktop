@@ -23,6 +23,7 @@ jobs:
       - run: npm ci
       - name: Configure sandbox helper on the disposable Linux runner
         run: |
+          node node_modules/electron/install.js
           sudo chown root:root node_modules/electron/dist/chrome-sandbox
           sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
       - run: npm run check
