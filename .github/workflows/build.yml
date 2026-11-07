@@ -43,8 +43,14 @@ jobs:
       - name: Install packaging tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y rpm zsync zstd ruby ruby-dev build-essential libgtk-3-0t64 libnss3 libasound2t64
+          sudo apt-get install -y rpm zsync zstd libarchive-tools ruby ruby-dev build-essential libgtk-3-0t64 libnss3 libasound2t64
           sudo gem install fpm --version 1.17.0 --no-document
+      - name: Check packaging dependencies
+        run: |
+          command -v bsdtar
+          command -v zstd
+          command -v zsyncmake
+          fpm --version
       - run: npm ci
       - name: Configure sandbox helper on the disposable Linux runner
         run: |
@@ -54,13 +60,66 @@ jobs:
       - run: npm run check
       - run: npm run test:smoke
       - name: Package Linux
-        run: npx --no-install electron-builder --linux AppImage deb rpm pacman tar.gz --${{ matrix.arch }} --publish never
+        run: npx --no-install electron-builder --linux AppImage deb rpm tar.gz --${{ matrix.arch }} --publish never
         env:
           USE_SYSTEM_FPM: 'true'
       - run: node scripts/collect.mjs linux ${{ matrix.arch }}
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: packages-linux-${{ matrix.arch }}
+          path: artifacts/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+  archlinux:
+    name: Arch Linux (${{ matrix.arch }})
+    needs: validate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Install Arch packaging dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libarchive-tools zstd ruby ruby-dev build-essential
+          sudo gem install fpm --version 1.17.0 --no-document
+          command -v bsdtar
+          command -v zstd
+          fpm --version
+      - run: npm ci
+      - run: npm run check
+      - run: npm run build
+      - name: Build real Arch zstd package
+        run: npx --no-install electron-builder --linux pacman --${{ matrix.arch }} --publish never
+        env:
+          USE_SYSTEM_FPM: 'true'
+      - name: Validate metadata, compression, payload and ELF architecture
+        run: node scripts/collect.mjs arch ${{ matrix.arch }}
+      - name: Validate x86_64 package with native pacman
+        if: matrix.arch == 'x64'
+        run: |
+          docker run --rm -v "$PWD/artifacts:/packages:ro" archlinux:base bash -euc '
+            pacman -Qip /packages/*.pkg.tar.zst
+            pacman --noconfirm -U --dbonly --nodeps --noscriptlet /packages/*.pkg.tar.zst
+            pacman -Q rattib-desktop
+          '
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: packages-arch-${{ matrix.arch }}
           path: artifacts/*
           if-no-files-found: error
           compression-level: 0
@@ -132,9 +191,7 @@ jobs:
       - run: npx --no-install electron-builder --mac dmg --${{ matrix.arch }} --publish never
       - name: Verify Universal executable and native PTY slices
         if: matrix.arch == 'universal'
-        run: |
-          lipo -verify_arch x86_64 arm64 "release/mac-universal/Rattib Desktop.app/Contents/MacOS/Rattib Desktop"
-          lipo -verify_arch x86_64 arm64 "release/mac-universal/Rattib Desktop.app/Contents/Resources/app.asar.unpacked/node_modules/node-pty/build/Release/pty.node"
+        run: node scripts/verify-universal.mjs
       - run: node scripts/collect.mjs macos ${{ matrix.arch }}
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -182,7 +239,7 @@ jobs:
           retention-days: 14
   draft-release:
     if: github.ref_type == 'tag'
-    needs: [linux, flatpak, macos, windows]
+    needs: [linux, archlinux, flatpak, macos, windows]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:

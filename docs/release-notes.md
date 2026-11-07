@@ -2,6 +2,13 @@
 
 Manual tool inventory, per-platform commands, an interactive PTY terminal, explicit execution confirmations, and optional version checks.
 
+### Packaging fixes in 0.1.2
+- Install `libarchive-tools` explicitly: Arch packaging needs `bsdtar` to generate `.MTREE`.
+- Build and upload Arch packages in independent jobs (`packages-arch-x64`, `packages-arch-arm64`).
+- Validate zstd integrity, package metadata/version, payload and executable architecture; check x86_64 metadata with native pacman in a disposable container.
+- Fix Universal `lipo` argument order; retain checks for both executable and PTY architecture slices.
+- Permit the bundled native PTY addon in ad-hoc signed macOS builds via application-scoped entitlements.
+
 **This prototype is not publisher-signed or notarized, and is not a production-ready release.** macOS builds use ad-hoc signing only. Builds do not certify every supported distribution, Hermes/Pi installer flow, or real-device compatibility. Test installers in a disposable environment first.
 
 ### Download architectures

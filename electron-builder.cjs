@@ -23,6 +23,8 @@ module.exports = {
   rpm: { compression: 'xz' },
   pacman: {
     compression: 'zstd',
+    // Override FPM's generic multiline description: .PKGINFO requires a single-line value.
+    fpm: ['--description', 'Manage manually added CLI tools with an interactive terminal.'],
     artifactName: 'Rattib-Desktop-${version}-linux-${arch}.pkg.tar.zst',
     depends: ['gtk3', 'nss', 'libxss', 'libxtst', 'at-spi2-core', 'libsecret', 'alsa-lib', 'mesa', 'libcups']
   },
