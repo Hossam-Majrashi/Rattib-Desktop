@@ -1,6 +1,14 @@
-## Rattib Desktop — experimental first build
+## Rattib Desktop 0.2.0 — experimental release
 
 Manual tool inventory, per-platform commands, an interactive PTY terminal, explicit execution confirmations, and optional version checks.
+
+### New in 0.2.0
+- Arabic/English interface and native confirmations, with saved language preferences.
+- Launch commands and clearer editing without deleting a tool card; older definitions migrate with no command loss.
+- Persisted installation/version state and explicit manual association for existing tools.
+- Backend duplicate-install protection. Unknown tools with a version command are checked first; failed checks never automatically start an installer.
+- Read-only Arabic output panel using browser bidi/shaping. The interactive terminal remains LTR and command bytes are not reversed.
+- Standard-size Linux launcher icons, pre-launch icon-cache validation, and an explicit per-user shortcut option for packaged AppImage/portable Linux builds.
 
 ### Packaging fixes in 0.1.3
 - Install `libarchive-tools` explicitly: Arch packaging needs `bsdtar` to generate `.MTREE`.
@@ -23,5 +31,7 @@ Manual tool inventory, per-platform commands, an interactive PTY terminal, expli
 - Flatpak intentionally permits host command execution; its host PTY integration still requires real-world testing.
 - MSI installation is machine-wide and requires administrator consent. The NSIS installer is per-user.
 - AppImage zsync files support external zsync downloads; automatic self-updating and AppImageUpdate discovery are not implemented.
-- No automatic detection, updates, secret storage, or terminal-session file logging.
+- No background device scans, automatic updates, encrypted secret storage, or terminal-session file logging. Existing-tool checks run only for user-added tools after explicit approval.
+- Presence is cached, not continuously monitored. Manual association and a successful launch are not proof of a verified version.
+- Arabic reading mode is read-only and may not preserve cursor-heavy TUI layouts. Use the original terminal for input.
 - Compare SHA256SUMS before using downloaded assets. Checksums alone are not a publisher signature.

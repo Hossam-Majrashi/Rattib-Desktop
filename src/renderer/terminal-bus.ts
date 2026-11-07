@@ -1,13 +1,14 @@
 import type { TerminalEvent } from '../shared/model';
+import { exitLine } from '../shared/terminal-text';
 export const records = new Map<string, { output: string; exitCode?: number }>();
 export const listeners = new Set<(event: TerminalEvent) => void>();
 export function recordEvent(event: TerminalEvent) {
-  if (event.type === 'version') return;
+  if (event.type !== 'data' && event.type !== 'exit') return;
   const record = records.get(event.id) ?? { output: '' };
   if (event.type === 'data') record.output = (record.output + event.data).slice(-524288);
   else {
     record.exitCode = event.exitCode;
-    record.output += '\r\n[انتهى الأمر — exit code: ' + event.exitCode + ']\r\n';
+    record.output += exitLine(event.exitCode);
   }
   records.set(event.id, record);
   while (records.size > 4) records.delete(records.keys().next().value!);

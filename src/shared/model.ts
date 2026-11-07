@@ -1,29 +1,56 @@
 export const platforms = ['linux', 'darwin', 'win32'] as const;
 export type Platform = typeof platforms[number];
-export const actions = ['install', 'version', 'latest', 'update', 'uninstall'] as const;
+export const actions = ['install', 'launch', 'version', 'latest', 'update', 'uninstall'] as const;
 export type Action = typeof actions[number];
 export const shells = ['auto', 'bash', 'zsh', 'powershell', 'cmd', 'wsl'] as const;
 export type Shell = typeof shells[number];
 export interface Profile { shell: Shell; commands: Record<Action, string> }
 export interface Tool { id: string; name: string; profiles: Partial<Record<Platform, Profile>> }
-export interface AppInfo { platform: Platform; version: string; flatpak: boolean }
-export interface Run { id: string; toolId: string; toolName: string; action: Action; running: boolean }
+export type Language = 'ar' | 'en';
+export interface Settings { language: Language; arabicPreview: boolean }
+export const defaultSettings: Settings = { language: 'ar', arabicPreview: true };
+export function validateSettings(value: unknown): Settings {
+  if (!value || typeof value !== 'object') throw new Error('Invalid settings.');
+  const settings = value as Record<string, unknown>;
+  if (!['ar', 'en'].includes(settings.language as string) || typeof settings.arabicPreview !== 'boolean') throw new Error('Invalid settings.');
+  return { language: settings.language as Language, arabicPreview: settings.arabicPreview };
+}
+export type PresenceStatus = 'unknown' | 'verified' | 'linked' | 'check-failed';
+export interface Presence {
+  status: PresenceStatus;
+  installedVersion?: string;
+  latestVersion?: string;
+  checkedAt?: number;
+  launchedAt?: number;
+}
+export function isPresent(state?: Presence): boolean { return state?.status === 'verified' || state?.status === 'linked'; }
+export interface AppInfo { platform: Platform; version: string; flatpak: boolean; shortcutAvailable: boolean }
+export interface Run { id: string; toolId: string; toolName: string; action: Action; running: boolean; installProbe?: boolean }
+export interface AlreadyPresent { skipped: true; toolId: string; state: Presence }
 export type TerminalEvent =
   | { type: 'data'; id: string; data: string }
   | { type: 'exit'; id: string; exitCode: number; signal?: number }
-  | { type: 'version'; toolId: string; action: 'version' | 'latest'; version: string };
+  | { type: 'version'; toolId: string; action: 'version' | 'latest'; version: string }
+  | { type: 'presence'; toolId: string; state: Presence }
+  | { type: 'error'; message: string };
 export interface API {
   info(): Promise<AppInfo>;
   list(): Promise<Tool[]>;
   save(tools: Tool[]): Promise<void>;
-  run(toolId: string, action: Action): Promise<Run | null>;
+  settings(): Promise<Settings>;
+  saveSettings(settings: Settings): Promise<Settings>;
+  presence(): Promise<Record<string, Presence>>;
+  link(toolId: string): Promise<Presence | null>;
+  forget(toolId: string): Promise<Presence | null>;
+  createShortcut(): Promise<string | null>;
+  run(toolId: string, action: Action): Promise<Run | AlreadyPresent | null>;
   input(id: string, data: string): void;
   resize(id: string, cols: number, rows: number): void;
   stop(id: string): Promise<boolean>;
   onTerminal(callback: (event: TerminalEvent) => void): () => void;
 }
 export function blankProfile(): Profile {
-  return { shell: 'auto', commands: { install: '', version: '', latest: '', update: '', uninstall: '' } };
+  return { shell: 'auto', commands: { install: '', launch: '', version: '', latest: '', update: '', uninstall: '' } };
 }
 export function validateTools(value: unknown): Tool[] {
   if (!Array.isArray(value) || value.length > 500) throw new Error('Invalid tool list (maximum 500).');
@@ -31,7 +58,7 @@ export function validateTools(value: unknown): Tool[] {
   return value.map((item: unknown) => {
     if (!item || typeof item !== 'object') throw new Error('Invalid tool.');
     const t = item as Record<string, unknown>;
-    if (typeof t.id !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(t.id) || ids.has(t.id)) throw new Error('Invalid or duplicate ID.');
+    if (typeof t.id !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(t.id) || ['__proto__', 'constructor', 'prototype'].includes(t.id) || ids.has(t.id)) throw new Error('Invalid or duplicate ID.');
     ids.add(t.id);
     if (typeof t.name !== 'string' || !t.name.trim() || t.name.length > 120) throw new Error('Invalid tool name.');
     if (!t.profiles || typeof t.profiles !== 'object' || Array.isArray(t.profiles)) throw new Error('Invalid profiles.');
@@ -46,7 +73,9 @@ export function validateTools(value: unknown): Tool[] {
       if (!p.commands || typeof p.commands !== 'object') throw new Error('Invalid commands.');
       const commands = {} as Profile['commands'];
       for (const a of actions) {
-        const c = (p.commands as Record<string, unknown>)[a];
+        // Backward-compatible migration: 0.1.x definitions have no launch command.
+        const raw = (p.commands as Record<string, unknown>)[a];
+        const c = a === 'launch' && raw === undefined ? '' : raw;
         if (typeof c !== 'string' || c.length > 16384 || c.includes('\0')) throw new Error('Invalid command.');
         commands[a] = c;
       }

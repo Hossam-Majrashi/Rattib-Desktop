@@ -50,7 +50,10 @@ export async function verifyArchPackage(file, arch, version) {
   const entries = execFileSync('bsdtar', ['-tf', file], { encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 }).trim().split('\n');
   const originals = new Map(entries.map(entry => [entry.replace(/^\.\//, ''), entry]));
   const required = ['.PKGINFO', '.MTREE', '.INSTALL', 'opt/Rattib Desktop/rattib-desktop', 'opt/Rattib Desktop/resources/app.asar', 'usr/share/applications/io.github.HossamMajrashi.RattibDesktop.desktop'];
+  for (const size of [48, 128, 256, 512]) required.push(`usr/share/icons/hicolor/${size}x${size}/apps/rattib-desktop.png`);
   for (const entry of required) if (!originals.has(entry)) throw new Error('Missing Arch package payload: ' + entry);
+  const desktop = execFileSync('bsdtar', ['-xOf', file, originals.get('usr/share/applications/io.github.HossamMajrashi.RattibDesktop.desktop')], { encoding: 'utf8' });
+  if (!/^Icon=rattib-desktop\r?$/m.test(desktop) || !/^StartupWMClass=io\.github\.HossamMajrashi\.RattibDesktop\r?$/m.test(desktop)) throw new Error('Desktop icon/window identity mismatch.');
   const info = validatePkgInfo(execFileSync('bsdtar', ['-xOf', file, originals.get('.PKGINFO')], { encoding: 'utf8', maxBuffer: 262144 }), arch, version);
   const header = await extractHeader(file, originals.get('opt/Rattib Desktop/rattib-desktop'));
   if (header.length < 20 || header.subarray(0, 4).toString('hex') !== '7f454c46' || header[4] !== 2 || header[5] !== 1 || header.readUInt16LE(18) !== (arch === 'x64' ? 62 : 183)) throw new Error('Packaged Electron executable architecture mismatch.');

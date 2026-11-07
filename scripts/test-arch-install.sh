@@ -12,6 +12,13 @@ test -f "$package"
   pacman -Q rattib-desktop
   pacman -Qk rattib-desktop
   test -x "/opt/Rattib Desktop/rattib-desktop"
+  # Validate launcher assets and the icon cache BEFORE the application is started.
+  for size in 48 128 256 512; do
+    test -s "/usr/share/icons/hicolor/${size}x${size}/apps/rattib-desktop.png"
+  done
+  test -f /usr/share/icons/hicolor/icon-theme.cache
+  gtk-update-icon-cache --validate /usr/share/icons/hicolor
+  echo "LINUX_LAUNCHER_ICON_OK standard sizes and cache present before first launch"
   ldd "/opt/Rattib Desktop/rattib-desktop" | tee /tmp/rattib-ldd.txt
   if grep -F "not found" /tmp/rattib-ldd.txt; then
     echo "Missing runtime libraries" >&2

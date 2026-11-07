@@ -1,14 +1,19 @@
 import { lazy, Suspense, useEffect, useRef, useState, type FormEvent } from 'react';
-import { actions, blankProfile, compareVersions, type Action, type AppInfo, type Platform, type Run, type Shell, type Tool } from '../shared/model';
+import { actions, blankProfile, compareVersions, defaultSettings, isPresent, type Action, type AppInfo, type Language, type Platform, type Presence, type Run, type Settings, type Shell, type Tool } from '../shared/model';
+import { t, type MessageKey } from '../shared/i18n';
 import { exitCode, recordEvent } from './terminal-bus';
 const TerminalPane = lazy(() => import('./TerminalPane').then(module => ({ default: module.TerminalPane })));
-const labels: Record<Action, string> = { install: 'تثبيت', version: 'قراءة الإصدار', latest: 'تحقق من تحديث', update: 'تحديث', uninstall: 'إلغاء التثبيت' };
 const platformNames: Record<Platform, string> = { linux: 'Linux', darwin: 'macOS', win32: 'Windows' };
-const updateNames = { unknown: 'غير معروفة', equal: 'مطابق لآخر إصدار مُتحقق منه', available: 'تحديث متاح', 'installed-newer': 'المثبت أحدث من المصدر المُتحقق منه', manual: 'تحتاج مقارنة يدوية' };
+type SaveOptions = { link: boolean; verify: boolean };
 
-function Editor({ tool, platform, onSave, onCancel }: { tool: Tool; platform: Platform; onSave: (tool: Tool) => Promise<void>; onCancel: () => void }) {
+function Editor({ tool, platform, language, present, onSave, onCancel }: {
+  tool: Tool; platform: Platform; language: Language; present: boolean;
+  onSave: (tool: Tool, options: SaveOptions) => Promise<void>; onCancel: () => void;
+}) {
+  const tr = (key: MessageKey) => t(language, key);
   const [draft, setDraft] = useState<Tool>(() => structuredClone(tool));
   const [selected, setSelected] = useState(platform);
+  const [linkExisting, setLinkExisting] = useState(false);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const ref = useRef<HTMLDialogElement>(null);
@@ -17,105 +22,186 @@ function Editor({ tool, platform, onSave, onCancel }: { tool: Tool; platform: Pl
   function setCommand(action: Action, value: string) {
     setDraft(prev => ({ ...prev, profiles: { ...prev.profiles, [selected]: { ...profile, commands: { ...profile.commands, [action]: value } } } }));
   }
-  async function save(event: FormEvent) {
+  async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setError(''); setSaving(true);
+    const submitter = (event.nativeEvent as SubmitEvent).submitter;
+    const verify = submitter instanceof HTMLButtonElement && submitter.value === 'verify';
     try {
       const profiles = { ...draft.profiles };
       if (!profiles[selected]) profiles[selected] = profile;
-      await onSave({ ...draft, name: draft.name.trim(), profiles });
+      await onSave({ ...draft, name: draft.name.trim(), profiles }, { link: selected === platform && linkExisting, verify: selected === platform && verify });
     } catch (e) { setError(String(e)); setSaving(false); }
   }
   return <dialog ref={ref} onCancel={onCancel} aria-labelledby="editor-title">
     <form onSubmit={save}>
-      <div className="row between"><h2 id="editor-title">إعداد الأداة</h2><button type="button" onClick={onCancel} aria-label="إغلاق">×</button></div>
-      <label>اسم الأداة<input required maxLength={120} value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} autoFocus /></label>
+      <div className="row between"><h2 id="editor-title">{tr('editorTitle')}</h2><button type="button" onClick={onCancel} aria-label={tr('close')}>×</button></div>
+      <label>{tr('name')}<input required maxLength={120} dir="auto" value={draft.name} onChange={e => setDraft({ ...draft, name: e.target.value })} autoFocus /></label>
       <div className="row">
-        <label>النظام<select value={selected} onChange={e => setSelected(e.target.value as Platform)}>{Object.entries(platformNames).map(([key, name]) => <option key={key} value={key}>{name}</option>)}</select></label>
-        <label>بيئة التنفيذ<select value={profile.shell} onChange={e => setDraft({ ...draft, profiles: { ...draft.profiles, [selected]: { ...profile, shell: e.target.value as Shell } } })}>
-          <option value="auto">الافتراضية للنظام</option>
-          {selected === 'win32' ? <><option value="powershell">Windows PowerShell</option><option value="cmd">Command Prompt</option><option value="wsl">WSL / bash (يتطلب تثبيته)</option></> : <><option value="bash">bash</option><option value="zsh">zsh</option></>}
+        <label>{tr('platform')}<select value={selected} onChange={e => setSelected(e.target.value as Platform)}>{Object.entries(platformNames).map(([key, name]) => <option key={key} value={key}>{name}</option>)}</select></label>
+        <label>{tr('shell')}<select value={profile.shell} onChange={e => setDraft({ ...draft, profiles: { ...draft.profiles, [selected]: { ...profile, shell: e.target.value as Shell } } })}>
+          <option value="auto">{tr('defaultShell')}</option>
+          {selected === 'win32' ? <><option value="powershell">Windows PowerShell</option><option value="cmd">Command Prompt</option><option value="wsl">{tr('wsl')}</option></> : <><option value="bash">bash</option><option value="zsh">zsh</option></>}
         </select></label>
       </div>
-      <p className="muted">كل الأوامر اختيارية. ترك الحقل فارغًا يعطّل زره. إعدادات كل نظام مستقلة.</p>
-      {actions.filter(a => a !== 'latest').map(a => <label key={a}>{labels[a]}<textarea dir="ltr" rows={2} maxLength={16384} spellCheck={false} value={profile.commands[a]} onChange={e => setCommand(a, e.target.value)} placeholder={a === 'version' ? 'tool --version' : ''} /></label>)}
-      <details><summary>متقدم: التحقق من آخر إصدار متاح</summary>
-        <p className="muted">أدخل أمرًا موثوقًا يعرض رقم أحدث إصدار، دون تثبيت أو تحديث. لا يستطيع Rattib ضمان أن الأمر للقراءة فقط. يلزم ناتج واضح مثل 1.5.0؛ إذا احتوى أكثر من إصدار فلن يخمّن التطبيق.</p>
-        <textarea aria-label="أمر أحدث إصدار" dir="ltr" rows={2} maxLength={16384} value={profile.commands.latest} onChange={e => setCommand('latest', e.target.value)} />
+      <p className="muted">{tr('optionalCommands')}</p>
+      {actions.filter(a => a !== 'latest').map(a => <label key={a}>{tr(`action.${a}`)}
+        <textarea className="command-input" data-command={a} dir="ltr" rows={2} maxLength={16384} spellCheck={false} value={profile.commands[a]} onChange={e => setCommand(a, e.target.value)} placeholder={a === 'version' ? 'tool --version' : a === 'launch' ? 'tool' : ''} />
+        {a === 'launch' && <span className="muted small">{tr('launchHint')}</span>}
+      </label>)}
+      {selected === platform && !present && <div className="association-option">
+        <label className="checkbox-label"><input type="checkbox" checked={linkExisting} onChange={e => setLinkExisting(e.target.checked)} />{tr('alreadyInstalled')}</label>
+        <p className="muted small">{tr('alreadyInstalledHint')}</p>
+      </div>}
+      <details><summary>{tr('latestAdvanced')}</summary><p className="muted">{tr('latestHint')}</p>
+        <textarea className="command-input" aria-label={tr('action.latest')} dir="ltr" rows={2} maxLength={16384} value={profile.commands.latest} onChange={e => setCommand('latest', e.target.value)} />
       </details>
-      <p className="warning">لا تضع مفاتيح API أو كلمات المرور في الأوامر المحفوظة؛ الإعدادات ملف محلي وليست خزنة أسرار.</p>
-      {error && <p role="alert" className="error">{error}</p>}
-      <div className="row end"><button type="button" onClick={onCancel}>إلغاء</button><button className="primary" disabled={saving || !draft.name.trim()}>{saving ? 'جارٍ الحفظ…' : 'حفظ الأداة'}</button></div>
+      <p className="warning">{tr('noSecrets')}</p>
+      {error && <p role="alert" className="error" dir="auto">{error}</p>}
+      <div className="row end wrap">
+        <button type="button" onClick={onCancel}>{tr('cancel')}</button>
+        <button type="submit" name="intent" value="verify" disabled={saving || !draft.name.trim() || selected !== platform || !profile.commands.version.trim()}>{tr('saveVerify')}</button>
+        <button className="primary" type="submit" name="intent" value="save" disabled={saving || !draft.name.trim()}>{tr(saving ? 'saving' : 'save')}</button>
+      </div>
     </form>
   </dialog>;
 }
+function SettingsDialog({ settings, info, onSave, onCancel, onShortcut }: {
+  settings: Settings; info: AppInfo; onSave: (settings: Settings) => Promise<void>; onCancel: () => void; onShortcut: () => Promise<void>;
+}) {
+  const [draft, setDraft] = useState(settings);
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const ref = useRef<HTMLDialogElement>(null);
+  const tr = (key: MessageKey) => t(settings.language, key);
+  useEffect(() => { ref.current?.showModal(); }, []);
+  async function save(event: FormEvent) {
+    event.preventDefault(); setSaving(true);
+    try { await onSave(draft); } catch (e) { setError(String(e)); setSaving(false); }
+  }
+  return <dialog ref={ref} onCancel={onCancel} aria-labelledby="settings-title"><form onSubmit={save}>
+    <div className="row between"><h2 id="settings-title">{tr('settings')}</h2><button type="button" onClick={onCancel} aria-label={tr('close')}>×</button></div>
+    <label>{tr('language')}<select value={draft.language} onChange={e => setDraft({ ...draft, language: e.target.value as Language })}><option value="ar">العربية</option><option value="en">English</option></select></label>
+    <p className="muted">{tr('languageHint')}</p>
+    <label className="checkbox-label"><input type="checkbox" checked={draft.arabicPreview} onChange={e => setDraft({ ...draft, arabicPreview: e.target.checked })} />{tr('arabicPreviewSetting')}</label>
+    {info.shortcutAvailable && <section className="association-option"><p className="muted">{tr('shortcutHint')}</p><button type="button" onClick={() => { void onShortcut().catch(e => setError(String(e))); }}>{tr('shortcut')}</button></section>}
+    {error && <p className="error" role="alert" dir="auto">{error}</p>}
+    <div className="row end"><button type="button" onClick={onCancel}>{tr('cancel')}</button><button type="submit" className="primary" disabled={saving}>{tr(saving ? 'saving' : 'confirm')}</button></div>
+  </form></dialog>;
+}
+
 export function App() {
   const [info, setInfo] = useState<AppInfo>();
   const [tools, setTools] = useState<Tool[]>([]);
+  const [preferences, setPreferences] = useState<Settings>(defaultSettings);
+  const [presence, setPresence] = useState<Record<string, Presence>>({});
   const [editing, setEditing] = useState<Tool>();
+  const [showSettings, setShowSettings] = useState(false);
   const [run, setRun] = useState<Run>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [ready, setReady] = useState(false);
   const [search, setSearch] = useState('');
-  const [versions, setVersions] = useState<Record<string, { installed?: string; latest?: string }>>({});
+  const language = preferences.language;
+  const tr = (key: MessageKey, values: Record<string, string | number> = {}) => t(language, key, values);
+  useEffect(() => { document.documentElement.lang = language; document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr'; }, [language]);
   useEffect(() => {
     const unsubscribe = window.rattib.onTerminal(event => {
       recordEvent(event);
       if (event.type === 'exit') setRun(prev => prev?.id === event.id ? { ...prev, running: false } : prev);
-      if (event.type === 'version') setVersions(prev => ({ ...prev, [event.toolId]: { ...prev[event.toolId], [event.action === 'version' ? 'installed' : 'latest']: event.version } }));
+      if (event.type === 'presence') setPresence(prev => ({ ...prev, [event.toolId]: event.state }));
+      if (event.type === 'error') setError(event.message);
     });
     let mounted = true;
-    Promise.all([window.rattib.info(), window.rattib.list()]).then(([i, t]) => { if (mounted) { setInfo(i); setTools(t); setReady(true); } }).catch(e => { if (mounted) setError(String(e)); });
+    Promise.all([window.rattib.info(), window.rattib.list(), window.rattib.settings(), window.rattib.presence()]).then(([i, list, settings, states]) => {
+      if (mounted) { setInfo(i); setTools(list); setPreferences(settings); setPresence(states); setReady(true); }
+    }).catch(e => { if (mounted) setError(String(e)); });
     return () => { mounted = false; unsubscribe(); };
   }, []);
   async function execute(tool: Tool, action: Action) {
-    setError(''); setBusy(true);
-    if (action === 'version' || action === 'latest') setVersions(prev => ({ ...prev, [tool.id]: { ...prev[tool.id], [action === 'version' ? 'installed' : 'latest']: undefined } }));
-    if (action === 'install' || action === 'update' || action === 'uninstall') setVersions(prev => ({ ...prev, [tool.id]: {} }));
+    setError(''); setNotice(''); setBusy(true);
     try {
       const result = await window.rattib.run(tool.id, action);
-      if (result) setRun({ ...result, running: result.running && exitCode(result.id) === undefined });
+      if (result && 'skipped' in result) {
+        setPresence(prev => ({ ...prev, [tool.id]: result.state })); setNotice(tr('alreadyPresent', { name: tool.name }));
+      } else if (result) {
+        setRun({ ...result, running: result.running && exitCode(result.id) === undefined });
+        if (result.installProbe) setNotice(tr('probeNotice'));
+      }
     } catch (e) { setError(String(e)); }
     finally { setBusy(false); }
   }
-  async function save(tool: Tool) {
-    const next = tools.some(t => t.id === tool.id) ? tools.map(t => t.id === tool.id ? tool : t) : [...tools, tool];
-    await window.rattib.save(next); setTools(next); setEditing(undefined);
-    setVersions(prev => ({ ...prev, [tool.id]: {} }));
+  async function associate(tool: Tool, forget = false) {
+    const state = await (forget ? window.rattib.forget(tool.id) : window.rattib.link(tool.id));
+    if (state) setPresence(prev => ({ ...prev, [tool.id]: state }));
+  }
+  async function save(tool: Tool, options: SaveOptions) {
+    const next = tools.some(item => item.id === tool.id) ? tools.map(item => item.id === tool.id ? tool : item) : [...tools, tool];
+    await window.rattib.save(next);
+    setTools(next); setPresence(await window.rattib.presence()); setEditing(undefined);
+    try {
+      if (options.link) await associate(tool);
+      if (options.verify) await execute(tool, 'version');
+    } catch (e) { setError(String(e)); }
   }
   async function remove(tool: Tool) {
-    if (!window.confirm('حذف بطاقة ' + tool.name + ' من Rattib فقط؟\nهذا لا يلغي تثبيت الأداة.')) return;
-    try { const next = tools.filter(t => t.id !== tool.id); await window.rattib.save(next); setTools(next); }
+    if (!window.confirm(tr('deleteQuestion', { name: tool.name }))) return;
+    try { const next = tools.filter(item => item.id !== tool.id); await window.rattib.save(next); setTools(next); setPresence(await window.rattib.presence()); }
     catch (e) { setError(String(e)); }
   }
   const locked = busy || Boolean(run?.running);
-  return <main>
+  const activeTool = tools.find(tool => tool.id === run?.toolId);
+  const activeCommand = info && run && activeTool?.profiles[info.platform]?.commands[run.action];
+  const date = (value: number) => new Intl.DateTimeFormat(language, { dateStyle: 'medium', timeStyle: 'short' }).format(value);
+  return <main lang={language} dir={language === 'ar' ? 'rtl' : 'ltr'}>
     <header>
-      <div className="brand"><span className="logo" aria-hidden="true">R</span><div><h1 dir="ltr">Rattib Desktop</h1><p>أدواتك وأوامرك، في مكان واحد.</p></div></div>
-      <button className="primary" disabled={!ready} onClick={() => setEditing({ id: crypto.randomUUID(), name: '', profiles: { [info!.platform]: blankProfile() } })}>＋ إضافة أداة</button>
+      <div className="brand"><span className="logo" aria-hidden="true">R</span><div><h1 dir="ltr">Rattib Desktop</h1><p>{tr('subtitle')}</p></div></div>
+      <div className="row wrap"><button data-ui="settings" disabled={!ready} onClick={() => setShowSettings(true)}>{tr('settings')}</button><button className="primary" disabled={!ready || locked} onClick={() => setEditing({ id: crypto.randomUUID(), name: '', profiles: { [info!.platform]: blankProfile() } })}>＋ {tr('addTool')}</button></div>
     </header>
-    <section className="notice">أنت تضيف الأدوات وتختار الإجابات. لا فحص تلقائي للجهاز ولا تنفيذ أو تحديث تلقائي. الأوامر التي تشغّلها قد تصل لملفاتك بصلاحيات حسابك.</section>
-    {info?.flatpak && <p className="warning">نسخة Flatpak تشغّل أوامرك على النظام المضيف عبر flatpak-spawn. هذا يمنح الأوامر صلاحيات حسابك خارج العزل.</p>}
-    {error && <p className="error" role="alert">{error}</p>}
-    <div className="row between"><h2>أدواتي <span className="count">{tools.length}</span></h2><input className="search" aria-label="ابحث في الأدوات المضافة" placeholder="ابحث في أدواتك…" value={search} onChange={e => setSearch(e.target.value)} /></div>
-    {!ready ? <section className="empty">جارٍ تحميل إعدادات Rattib…</section> : !tools.length ? <section className="empty"><span className="empty-icon">＋</span><h2>ابدأ بأول أداة</h2><p>أضف الاسم وأوامر التثبيت والإصدار والتحديث والإزالة.<br/>ستظهر أسئلة الأداة في الطرفية لتجيب عنها بنفسك.</p></section> : <section className="cards">
-      {tools.filter(t => t.name.toLocaleLowerCase().includes(search.toLocaleLowerCase())).map(tool => {
+    <section className="notice">{tr('notice')}</section>
+    {info?.flatpak && <p className="warning">{tr('flatpakWarning')}</p>}
+    {error && <p className="error" role="alert" dir="auto">{error}</p>}
+    {notice && <p className="notice" role="status" dir="auto">{notice}</p>}
+    <div className="row between"><h2>{tr('tools')} <span className="count">{tools.length}</span></h2><input className="search" aria-label={tr('search')} placeholder={tr('search')} value={search} onChange={e => setSearch(e.target.value)} /></div>
+    {!ready ? <section className="empty">{tr('loading')}</section> : !tools.length ? <section className="empty"><span className="empty-icon">＋</span><h2>{tr('emptyTitle')}</h2><p>{tr('emptyText')}</p></section> : <section className="cards">
+      {tools.filter(tool => tool.name.toLocaleLowerCase().includes(search.toLocaleLowerCase())).map(tool => {
         const profile = info && tool.profiles[info.platform];
-        const v = versions[tool.id] ?? {};
-        return <article className="card" key={tool.id}>
-          <div className="row between"><h3 dir="auto">{tool.name}</h3><span className="badge">{profile ? platformNames[info!.platform] : 'غير مُعدّ لهذا النظام'}</span></div>
-          <dl><div><dt>الإصدار المثبت</dt><dd dir="ltr">{v.installed ?? 'لم يُقرأ'}</dd></div><div><dt>آخر إصدار من المصدر</dt><dd dir="ltr">{v.latest ?? 'لم يُتحقق منه'}</dd></div><div><dt>حالة التحديث</dt><dd>{profile?.commands.latest.trim() ? updateNames[compareVersions(v.installed, v.latest)] : 'التحقق غير مُعدّ'}</dd></div></dl>
-          <div className="actions">{actions.map(a => <button key={a} className={a === 'uninstall' ? 'danger' : ''} disabled={locked || !profile?.commands[a].trim()} title={!profile?.commands[a].trim() ? 'أضف الأمر في إعدادات الأداة أولًا' : undefined} onClick={() => void execute(tool, a)}>{labels[a]}</button>)}</div>
-          <div className="row card-footer"><button className="text-button" disabled={locked} onClick={() => setEditing(tool)}>تعديل</button><button className="text-button" disabled={locked} onClick={() => void remove(tool)}>حذف البطاقة فقط</button></div>
+        const state = presence[tool.id] ?? { status: 'unknown' };
+        const present = isPresent(state);
+        return <article className="card" key={tool.id} data-tool-id={tool.id}>
+          <div className="row between"><h3><bdi>{tool.name}</bdi></h3><span className="badge">{profile ? platformNames[info!.platform] : tr('missingProfile')}</span></div>
+          <p className={'presence ' + (present ? 'present' : '')}>{tr(`presence.${state.status}`)}</p>
+          <dl>
+            <div><dt>{tr('installedVersion')}</dt><dd><bdi dir="ltr">{state.installedVersion ?? tr('notRead')}</bdi></dd></div>
+            <div><dt>{tr('latestVersion')}</dt><dd><bdi dir="ltr">{state.latestVersion ?? tr('notChecked')}</bdi></dd></div>
+            <div><dt>{tr('updateState')}</dt><dd>{profile?.commands.latest.trim() ? tr(`update.${compareVersions(state.installedVersion, state.latestVersion)}`) : tr('latestNotConfigured')}</dd></div>
+            {state.checkedAt && <div><dt>{tr('checkedAt')}</dt><dd>{date(state.checkedAt)}</dd></div>}
+            {state.launchedAt && <div><dt>{tr('launchedAt')}</dt><dd>{date(state.launchedAt)}</dd></div>}
+          </dl>
+          <div className="actions">{actions.map(action => <button key={action} data-action={action} className={action === 'uninstall' ? 'danger' : action === 'launch' ? 'primary' : ''}
+            disabled={locked || !profile?.commands[action].trim() || (action === 'install' && present)}
+            title={action === 'install' && present ? tr('installDisabled') : !profile?.commands[action].trim() ? tr('commandMissing') : undefined}
+            onClick={() => void execute(tool, action)}>{tr(`action.${action}`)}</button>)}</div>
+          <div className="row card-footer wrap">
+            <button className="text-button" data-ui="edit" disabled={locked} onClick={() => setEditing(tool)}>{tr('edit')}</button>
+            <button className="text-button" disabled={locked} onClick={() => void remove(tool)}>{tr('deleteCard')}</button>
+            {profile && !present && <button className="text-button" disabled={busy} onClick={() => { void associate(tool).catch(e => setError(String(e))); }}>{tr('link')}</button>}
+            {profile && present && <button className="text-button" disabled={locked} onClick={() => { void associate(tool, true).catch(e => setError(String(e))); }}>{tr('forget')}</button>}
+          </div>
         </article>;
       })}
     </section>}
+    {tools.length > 0 && <p className="muted small">{tr('stateNotice')}</p>}
     <section className="terminal-section">
-      <div className="row between"><div><h2>الطرفية التفاعلية</h2><p className="muted">{run ? run.toolName + ' — ' + labels[run.action] + ' · ' + (run.running ? 'قيد التنفيذ' : 'انتهى الأمر') : 'ستظهر هنا خيارات التثبيت والإزالة. استخدم الأسهم وEnter أو اكتب الإجابة.'}</p></div>{run?.running && <button className="danger" onClick={() => { void window.rattib.stop(run.id).catch(e => setError(String(e))); }}>إيقاف العملية</button>}</div>
-      {run ? <Suspense fallback={<div className="terminal-placeholder">جارٍ فتح الطرفية…</div>}><TerminalPane key={run.id} id={run.id} /></Suspense> : <div className="terminal-placeholder" dir="ltr">$ Ready when you are.</div>}
-      <p className="muted small">لا يُحفظ سجل الطرفية على القرص بواسطة Rattib. نجاح الأمر لا يثبت اكتمال التثبيت؛ اقرأ الإصدار للتحقق. الإيقاف لا يتراجع عن التغييرات.</p>
+      <div className="row between"><div><h2>{tr('terminalTitle')}</h2><p className="muted">{run ? <><bdi>{run.toolName}</bdi> — {tr(`action.${run.action}`)} · {tr(run.running ? 'running' : 'finished')}</> : tr('terminalHelp')}</p></div>{run?.running && <button className="danger" onClick={() => { void window.rattib.stop(run.id).catch(e => setError(String(e))); }}>{tr('stop')}</button>}</div>
+      {activeCommand && <pre className="command-preview" dir="ltr"><code>{activeCommand}</code></pre>}
+      {run ? <Suspense fallback={<div className="terminal-placeholder">{tr('openingTerminal')}</div>}><TerminalPane key={run.id} id={run.id} language={language} arabicPreview={preferences.arabicPreview} /></Suspense> : <div className="terminal-placeholder" dir="ltr">$ Ready when you are.</div>}
+      <p className="muted small">{tr('terminalFooter')}</p>
     </section>
-    <footer><span dir="ltr">Rattib Desktop {info ? 'v' + info.version : ''}</span><span>محلي · بلا حساب · بلا اشتراك مطلوب</span></footer>
-    {editing && info && <Editor tool={editing} platform={info.platform} onSave={save} onCancel={() => setEditing(undefined)} />}
+    <footer><span dir="ltr">Rattib Desktop {info ? 'v' + info.version : ''}</span><span>{tr('local')}</span></footer>
+    {editing && info && <Editor tool={editing} platform={info.platform} language={language} present={isPresent(presence[editing.id])} onSave={save} onCancel={() => setEditing(undefined)} />}
+    {showSettings && info && <SettingsDialog settings={preferences} info={info} onCancel={() => setShowSettings(false)}
+      onSave={async settings => { setPreferences(await window.rattib.saveSettings(settings)); setShowSettings(false); setNotice(''); }}
+      onShortcut={async () => { const path = await window.rattib.createShortcut(); if (path) setNotice(tr('shortcutSaved', { path })); }} />}
   </main>;
 }

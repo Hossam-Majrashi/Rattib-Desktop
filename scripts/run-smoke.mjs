@@ -8,7 +8,7 @@ let status = 1;
 try {
   const args = process.platform === 'linux' ? ['--ozone-platform=headless', 'scripts/smoke.cjs'] : ['scripts/smoke.cjs'];
   const child = spawnSync(electron, args, {
-    stdio: 'inherit', timeout: 60000,
+    stdio: 'inherit', timeout: 90000,
     env: { ...process.env, RATTIB_SMOKE_PROFILE: profile }
   });
   if (child.error) console.error(child.error.message);

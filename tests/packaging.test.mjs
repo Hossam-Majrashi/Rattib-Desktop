@@ -47,6 +47,15 @@ test('Arch CI explicitly installs bsdtar and has its own artifact upload', () =>
   assert.match(job, /packages-arch-/);
   assert.match(job, /bash scripts\/test-arch-install\.sh/);
 });
+test('Linux launcher ships real standard-size icons, not only a 1024px image', () => {
+  assert.equal(require('../electron-builder.cjs').linux.icon, 'assets/icons');
+  for (const size of [16, 24, 32, 48, 64, 128, 256, 512]) {
+    const image = readFileSync(new URL('../assets/icons/' + size + 'x' + size + '.png', import.meta.url));
+    assert.equal(image.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+    assert.equal(image.readUInt32BE(16), size);
+    assert.equal(image.readUInt32BE(20), size);
+  }
+});
 test('Arch install check resolves dependencies instead of bypassing them', () => {
   const script = readFileSync(new URL('../scripts/test-arch-install.sh', import.meta.url), 'utf8');
   assert.match(script, /pacman -Syu --noconfirm/);

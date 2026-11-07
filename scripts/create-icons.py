@@ -34,5 +34,9 @@ def png(size):
 root = pathlib.Path(__file__).resolve().parent.parent / 'assets'
 root.mkdir(exist_ok=True)
 (root / 'icon.png').write_bytes(png(1024))
+icons = root / 'icons'
+icons.mkdir(exist_ok=True)
+for size in (16, 24, 32, 48, 64, 128, 256, 512):
+    (icons / f'{size}x{size}.png').write_bytes(png(size))
 small = png(256)
 (root / 'icon.ico').write_bytes(struct.pack('<HHH', 0, 1, 1) + struct.pack('<BBBBHHII', 0, 0, 0, 0, 1, 32, len(small), 22) + small)

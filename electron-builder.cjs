@@ -2,7 +2,7 @@ module.exports = {
   appId: 'io.github.HossamMajrashi.RattibDesktop',
   productName: 'Rattib Desktop',
   directories: { output: 'release', buildResources: 'assets' },
-  files: ['dist/**/*', 'assets/icon.png', 'package.json', '!**/*.map',
+  files: ['dist/**/*', 'assets/icon.png', 'assets/icons/*.png', 'package.json', '!**/*.map',
     '!node_modules/node-pty/{src,deps,third_party,test,typings,scripts}/**/*',
     '!node_modules/node-pty/build/Release/obj.target/**/*'],
   asar: true,
@@ -13,7 +13,7 @@ module.exports = {
   toolsets: { appimage: '1.0.3' },
   linux: {
     executableName: 'rattib-desktop', category: 'Utility', syncDesktopName: true,
-    icon: 'assets/icon.png', maintainer: 'Hossam Majrashi <mw3mw346@gmail.com>',
+    icon: 'assets/icons', maintainer: 'Hossam Majrashi <mw3mw346@gmail.com>',
     target: ['AppImage', 'deb', 'rpm', 'pacman', 'tar.gz'],
     artifactName: 'Rattib-Desktop-${version}-linux-${arch}.${ext}',
     desktop: { entry: { Name: 'Rattib Desktop', Comment: 'Manage manually added CLI tools', Terminal: 'false' } }

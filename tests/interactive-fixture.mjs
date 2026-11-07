@@ -1,5 +1,8 @@
 // Safe PTY fixture. No installation, network access, or filesystem writes.
 if (process.argv.includes('--version')) { console.log('1.5.0'); process.exit(0); }
+if (process.argv.includes('--missing')) { console.error('NOT_FOUND_FIXTURE'); process.exit(127); }
+if (process.argv.includes('--install-marker')) { console.log('INSTALL_EXECUTED'); process.exit(0); }
+if (process.argv.includes('--launch')) { console.log('LAUNCH_OK\nتأكيد إلغاء التثبيت؟ pi uninstall'); process.exit(0); }
 if (!process.stdin.isTTY || !process.stdout.isTTY) { console.error('NOT_A_TTY'); process.exit(2); }
 process.stdin.setRawMode(true);
 process.stdin.resume();
