@@ -23,15 +23,17 @@ export interface Presence {
   checkedAt?: number;
   launchedAt?: number;
 }
-export function isPresent(state?: Presence): boolean { return state?.status === 'verified' || state?.status === 'linked'; }
+// Legacy 'linked' records remain readable, but no longer count as detected installations.
+export function isPresent(state?: Presence): boolean { return state?.status === 'verified'; }
 export interface AppInfo { platform: Platform; version: string; flatpak: boolean; shortcutAvailable: boolean }
-export interface Run { id: string; toolId: string; toolName: string; action: Action; running: boolean; installProbe?: boolean }
-export interface AlreadyPresent { skipped: true; toolId: string; state: Presence }
+export interface Run { id: string; toolId: string; toolName: string; action: Action; phase: Action; running: boolean }
 export type TerminalEvent =
   | { type: 'data'; id: string; data: string }
   | { type: 'exit'; id: string; exitCode: number; signal?: number }
   | { type: 'version'; toolId: string; action: 'version' | 'latest'; version: string }
   | { type: 'presence'; toolId: string; state: Presence }
+  | { type: 'phase'; id: string; action: Action }
+  | { type: 'notice'; message: string }
   | { type: 'error'; message: string };
 export interface API {
   info(): Promise<AppInfo>;
@@ -40,10 +42,8 @@ export interface API {
   settings(): Promise<Settings>;
   saveSettings(settings: Settings): Promise<Settings>;
   presence(): Promise<Record<string, Presence>>;
-  link(toolId: string): Promise<Presence | null>;
-  forget(toolId: string): Promise<Presence | null>;
   createShortcut(): Promise<string | null>;
-  run(toolId: string, action: Action): Promise<Run | AlreadyPresent | null>;
+  run(toolId: string, action: Action): Promise<Run | null>;
   input(id: string, data: string): void;
   resize(id: string, cols: number, rows: number): void;
   stop(id: string): Promise<boolean>;

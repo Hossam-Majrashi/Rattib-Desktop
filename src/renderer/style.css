@@ -12,3 +12,13 @@
 .readable-output{max-height:290px;overflow:auto;background:#090d14;border-radius:8px;padding:12px;font-family:system-ui,"Noto Sans Arabic",Tahoma,sans-serif;line-height:1.8}
 .readable-output>div{white-space:pre-wrap;overflow-wrap:anywhere;unicode-bidi:plaintext;text-align:start;min-height:1.8em}
 bdi{unicode-bidi:isolate}
+:root{--scroll-track:#111925;--scroll-thumb:#3d5068;--scroll-hover:#58748f}
+*{scrollbar-width:thin;scrollbar-color:var(--scroll-thumb) var(--scroll-track)}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-track,::-webkit-scrollbar-corner{background:var(--scroll-track)}
+::-webkit-scrollbar-thumb{background:var(--scroll-thumb);border:2px solid var(--scroll-track);border-radius:10px}
+::-webkit-scrollbar-thumb:hover{background:var(--scroll-hover)}
+::-webkit-scrollbar-thumb:active{background:#63a995}
+::-webkit-scrollbar-button{display:none;width:0;height:0}
+::-webkit-resizer{background:#1b2535;border:1px solid #35445a}
+dialog{overflow-y:auto;scrollbar-gutter:stable}

@@ -60,12 +60,13 @@ test('changing detection identity invalidates stale presence and ignores old com
   await store.updatePresence(original.id, original.profiles.linux, { status: 'verified', installedVersion: '1.5.0' });
   assert.deepEqual(store.state(original.id), { status: 'unknown' });
 });
-test('manual association persists without pretending a version was verified', async context => {
+test('legacy manual associations remain readable but no longer count as verified presence', async context => {
   const { directory, store } = await setup(context); const item = tool();
   await store.saveTools([item]);
   await store.updatePresence(item.id, item.profiles.linux, { status: 'linked' });
   const reopened = new LocalStore(directory, 'linux'); await reopened.init();
-  assert.ok(isPresent(reopened.state(item.id)));
+  assert.equal(isPresent(reopened.state(item.id)), false);
+  assert.equal(reopened.state(item.id).status, 'linked');
   assert.equal(reopened.state(item.id).installedVersion, undefined);
   await reopened.updatePresence(item.id, item.profiles.linux, { status: 'check-failed' });
   assert.equal(isPresent(reopened.state(item.id)), false);

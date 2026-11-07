@@ -18,7 +18,8 @@ export function TerminalPane({ id, language, arabicPreview }: { id: string; lang
     const terminal = new Terminal({
       cursorBlink: true, fontSize: 14, fontFamily: 'ui-monospace, SFMono-Regular, Consolas, monospace',
       scrollback: 1000, allowProposedApi: false, allowTransparency: false,
-      theme: { background: '#090d14', foreground: '#d8e2ef', cursor: '#62dfb1', selectionBackground: '#33556d' }
+      theme: { background: '#090d14', foreground: '#d8e2ef', cursor: '#62dfb1', selectionBackground: '#33556d',
+        scrollbarSliderBackground: '#3d506880', scrollbarSliderHoverBackground: '#58748fcc', scrollbarSliderActiveBackground: '#63a995cc' }
     });
     let frame: number | undefined;
     let disposed = false;

@@ -1,19 +1,18 @@
 import { lazy, Suspense, useEffect, useRef, useState, type FormEvent } from 'react';
 import { actions, blankProfile, compareVersions, defaultSettings, isPresent, type Action, type AppInfo, type Language, type Platform, type Presence, type Run, type Settings, type Shell, type Tool } from '../shared/model';
 import { t, type MessageKey } from '../shared/i18n';
-import { exitCode, recordEvent } from './terminal-bus';
+import { exitCode, recordEvent, records } from './terminal-bus';
 const TerminalPane = lazy(() => import('./TerminalPane').then(module => ({ default: module.TerminalPane })));
 const platformNames: Record<Platform, string> = { linux: 'Linux', darwin: 'macOS', win32: 'Windows' };
-type SaveOptions = { link: boolean; verify: boolean };
+type SaveOptions = { verify: boolean };
 
-function Editor({ tool, platform, language, present, onSave, onCancel }: {
-  tool: Tool; platform: Platform; language: Language; present: boolean;
+function Editor({ tool, platform, language, onSave, onCancel }: {
+  tool: Tool; platform: Platform; language: Language;
   onSave: (tool: Tool, options: SaveOptions) => Promise<void>; onCancel: () => void;
 }) {
   const tr = (key: MessageKey) => t(language, key);
   const [draft, setDraft] = useState<Tool>(() => structuredClone(tool));
   const [selected, setSelected] = useState(platform);
-  const [linkExisting, setLinkExisting] = useState(false);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const ref = useRef<HTMLDialogElement>(null);
@@ -29,7 +28,7 @@ function Editor({ tool, platform, language, present, onSave, onCancel }: {
     try {
       const profiles = { ...draft.profiles };
       if (!profiles[selected]) profiles[selected] = profile;
-      await onSave({ ...draft, name: draft.name.trim(), profiles }, { link: selected === platform && linkExisting, verify: selected === platform && verify });
+      await onSave({ ...draft, name: draft.name.trim(), profiles }, { verify: selected === platform && verify });
     } catch (e) { setError(String(e)); setSaving(false); }
   }
   return <dialog ref={ref} onCancel={onCancel} aria-labelledby="editor-title">
@@ -48,10 +47,6 @@ function Editor({ tool, platform, language, present, onSave, onCancel }: {
         <textarea className="command-input" data-command={a} dir="ltr" rows={2} maxLength={16384} spellCheck={false} value={profile.commands[a]} onChange={e => setCommand(a, e.target.value)} placeholder={a === 'version' ? 'tool --version' : a === 'launch' ? 'tool' : ''} />
         {a === 'launch' && <span className="muted small">{tr('launchHint')}</span>}
       </label>)}
-      {selected === platform && !present && <div className="association-option">
-        <label className="checkbox-label"><input type="checkbox" checked={linkExisting} onChange={e => setLinkExisting(e.target.checked)} />{tr('alreadyInstalled')}</label>
-        <p className="muted small">{tr('alreadyInstalledHint')}</p>
-      </div>}
       <details><summary>{tr('latestAdvanced')}</summary><p className="muted">{tr('latestHint')}</p>
         <textarea className="command-input" aria-label={tr('action.latest')} dir="ltr" rows={2} maxLength={16384} value={profile.commands.latest} onChange={e => setCommand('latest', e.target.value)} />
       </details>
@@ -65,28 +60,29 @@ function Editor({ tool, platform, language, present, onSave, onCancel }: {
     </form>
   </dialog>;
 }
-function SettingsDialog({ settings, info, onSave, onCancel, onShortcut }: {
-  settings: Settings; info: AppInfo; onSave: (settings: Settings) => Promise<void>; onCancel: () => void; onShortcut: () => Promise<void>;
+function SettingsDialog({ settings, info, onChange, onCancel, onShortcut }: {
+  settings: Settings; info: AppInfo; onChange: (settings: Settings) => Promise<void>; onCancel: () => void; onShortcut: () => Promise<void>;
 }) {
-  const [draft, setDraft] = useState(settings);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const ref = useRef<HTMLDialogElement>(null);
   const tr = (key: MessageKey) => t(settings.language, key);
   useEffect(() => { ref.current?.showModal(); }, []);
-  async function save(event: FormEvent) {
-    event.preventDefault(); setSaving(true);
-    try { await onSave(draft); } catch (e) { setError(String(e)); setSaving(false); }
+  async function change(patch: Partial<Settings>) {
+    setSaving(true); setError('');
+    try { await onChange({ ...settings, ...patch }); }
+    catch (e) { setError(String(e)); }
+    finally { setSaving(false); }
   }
-  return <dialog ref={ref} onCancel={onCancel} aria-labelledby="settings-title"><form onSubmit={save}>
-    <div className="row between"><h2 id="settings-title">{tr('settings')}</h2><button type="button" onClick={onCancel} aria-label={tr('close')}>×</button></div>
-    <label>{tr('language')}<select value={draft.language} onChange={e => setDraft({ ...draft, language: e.target.value as Language })}><option value="ar">العربية</option><option value="en">English</option></select></label>
+  return <dialog ref={ref} onCancel={event => { if (saving) event.preventDefault(); else onCancel(); }} aria-labelledby="settings-title">
+    <div className="row between"><h2 id="settings-title">{tr('settings')}</h2><button type="button" disabled={saving} onClick={onCancel} aria-label={tr('close')}>×</button></div>
+    <label>{tr('language')}<select data-setting="language" value={settings.language} disabled={saving} onChange={e => { void change({ language: e.target.value as Language }); }}><option value="ar">العربية</option><option value="en">English</option></select></label>
     <p className="muted">{tr('languageHint')}</p>
-    <label className="checkbox-label"><input type="checkbox" checked={draft.arabicPreview} onChange={e => setDraft({ ...draft, arabicPreview: e.target.checked })} />{tr('arabicPreviewSetting')}</label>
-    {info.shortcutAvailable && <section className="association-option"><p className="muted">{tr('shortcutHint')}</p><button type="button" onClick={() => { void onShortcut().catch(e => setError(String(e))); }}>{tr('shortcut')}</button></section>}
+    <label className="checkbox-label"><input type="checkbox" disabled={saving} checked={settings.arabicPreview} onChange={e => { void change({ arabicPreview: e.target.checked }); }} />{tr('arabicPreviewSetting')}</label>
+    {info.shortcutAvailable && <section className="association-option"><p className="muted">{tr('shortcutHint')}</p><button type="button" disabled={saving} onClick={() => { void onShortcut().catch(e => setError(String(e))); }}>{tr('shortcut')}</button></section>}
     {error && <p className="error" role="alert" dir="auto">{error}</p>}
-    <div className="row end"><button type="button" onClick={onCancel}>{tr('cancel')}</button><button type="submit" className="primary" disabled={saving}>{tr(saving ? 'saving' : 'confirm')}</button></div>
-  </form></dialog>;
+    <div className="row end"><button type="button" data-ui="close-settings" className="primary" disabled={saving} onClick={onCancel}>{tr('close')}</button></div>
+  </dialog>;
 }
 
 export function App() {
@@ -109,6 +105,8 @@ export function App() {
     const unsubscribe = window.rattib.onTerminal(event => {
       recordEvent(event);
       if (event.type === 'exit') setRun(prev => prev?.id === event.id ? { ...prev, running: false } : prev);
+      if (event.type === 'phase') setRun(prev => prev?.id === event.id ? { ...prev, phase: event.action } : prev);
+      if (event.type === 'notice') setNotice(event.message);
       if (event.type === 'presence') setPresence(prev => ({ ...prev, [event.toolId]: event.state }));
       if (event.type === 'error') setError(event.message);
     });
@@ -122,25 +120,15 @@ export function App() {
     setError(''); setNotice(''); setBusy(true);
     try {
       const result = await window.rattib.run(tool.id, action);
-      if (result && 'skipped' in result) {
-        setPresence(prev => ({ ...prev, [tool.id]: result.state })); setNotice(tr('alreadyPresent', { name: tool.name }));
-      } else if (result) {
-        setRun({ ...result, running: result.running && exitCode(result.id) === undefined });
-        if (result.installProbe) setNotice(tr('probeNotice'));
-      }
+      if (result) setRun({ ...result, phase: records.get(result.id)?.phase ?? result.phase, running: result.running && exitCode(result.id) === undefined });
     } catch (e) { setError(String(e)); }
     finally { setBusy(false); }
-  }
-  async function associate(tool: Tool, forget = false) {
-    const state = await (forget ? window.rattib.forget(tool.id) : window.rattib.link(tool.id));
-    if (state) setPresence(prev => ({ ...prev, [tool.id]: state }));
   }
   async function save(tool: Tool, options: SaveOptions) {
     const next = tools.some(item => item.id === tool.id) ? tools.map(item => item.id === tool.id ? tool : item) : [...tools, tool];
     await window.rattib.save(next);
     setTools(next); setPresence(await window.rattib.presence()); setEditing(undefined);
     try {
-      if (options.link) await associate(tool);
       if (options.verify) await execute(tool, 'version');
     } catch (e) { setError(String(e)); }
   }
@@ -151,7 +139,7 @@ export function App() {
   }
   const locked = busy || Boolean(run?.running);
   const activeTool = tools.find(tool => tool.id === run?.toolId);
-  const activeCommand = info && run && activeTool?.profiles[info.platform]?.commands[run.action];
+  const activeCommand = info && run && activeTool?.profiles[info.platform]?.commands[run.phase];
   const date = (value: number) => new Intl.DateTimeFormat(language, { dateStyle: 'medium', timeStyle: 'short' }).format(value);
   return <main lang={language} dir={language === 'ar' ? 'rtl' : 'ltr'}>
     <header>
@@ -179,29 +167,32 @@ export function App() {
             {state.launchedAt && <div><dt>{tr('launchedAt')}</dt><dd>{date(state.launchedAt)}</dd></div>}
           </dl>
           <div className="actions">{actions.map(action => <button key={action} data-action={action} className={action === 'uninstall' ? 'danger' : action === 'launch' ? 'primary' : ''}
-            disabled={locked || !profile?.commands[action].trim() || (action === 'install' && present)}
-            title={action === 'install' && present ? tr('installDisabled') : !profile?.commands[action].trim() ? tr('commandMissing') : undefined}
+            disabled={locked || !profile?.commands[action].trim()}
+            title={!profile?.commands[action].trim() ? tr('commandMissing') : undefined}
             onClick={() => void execute(tool, action)}>{tr(`action.${action}`)}</button>)}</div>
           <div className="row card-footer wrap">
             <button className="text-button" data-ui="edit" disabled={locked} onClick={() => setEditing(tool)}>{tr('edit')}</button>
             <button className="text-button" disabled={locked} onClick={() => void remove(tool)}>{tr('deleteCard')}</button>
-            {profile && !present && <button className="text-button" disabled={busy} onClick={() => { void associate(tool).catch(e => setError(String(e))); }}>{tr('link')}</button>}
-            {profile && present && <button className="text-button" disabled={locked} onClick={() => { void associate(tool, true).catch(e => setError(String(e))); }}>{tr('forget')}</button>}
           </div>
         </article>;
       })}
     </section>}
     {tools.length > 0 && <p className="muted small">{tr('stateNotice')}</p>}
     <section className="terminal-section">
-      <div className="row between"><div><h2>{tr('terminalTitle')}</h2><p className="muted">{run ? <><bdi>{run.toolName}</bdi> — {tr(`action.${run.action}`)} · {tr(run.running ? 'running' : 'finished')}</> : tr('terminalHelp')}</p></div>{run?.running && <button className="danger" onClick={() => { void window.rattib.stop(run.id).catch(e => setError(String(e))); }}>{tr('stop')}</button>}</div>
+      <div className="row between"><div><h2>{tr('terminalTitle')}</h2><p className="muted">{run ? <><bdi>{run.toolName}</bdi> — {tr(`action.${run.action}`)}{run.phase !== run.action && <> / {tr(`action.${run.phase}`)}</>} · {tr(run.running ? 'running' : 'finished')}</> : tr('terminalHelp')}</p></div>{run?.running && <button className="danger" onClick={() => { void window.rattib.stop(run.id).catch(e => setError(String(e))); }}>{tr('stop')}</button>}</div>
       {activeCommand && <pre className="command-preview" dir="ltr"><code>{activeCommand}</code></pre>}
       {run ? <Suspense fallback={<div className="terminal-placeholder">{tr('openingTerminal')}</div>}><TerminalPane key={run.id} id={run.id} language={language} arabicPreview={preferences.arabicPreview} /></Suspense> : <div className="terminal-placeholder" dir="ltr">$ Ready when you are.</div>}
       <p className="muted small">{tr('terminalFooter')}</p>
     </section>
     <footer><span dir="ltr">Rattib Desktop {info ? 'v' + info.version : ''}</span><span>{tr('local')}</span></footer>
-    {editing && info && <Editor tool={editing} platform={info.platform} language={language} present={isPresent(presence[editing.id])} onSave={save} onCancel={() => setEditing(undefined)} />}
+    {editing && info && <Editor tool={editing} platform={info.platform} language={language} onSave={save} onCancel={() => setEditing(undefined)} />}
     {showSettings && info && <SettingsDialog settings={preferences} info={info} onCancel={() => setShowSettings(false)}
-      onSave={async settings => { setPreferences(await window.rattib.saveSettings(settings)); setShowSettings(false); setNotice(''); }}
+      onChange={async settings => {
+        const previous = preferences;
+        setPreferences(settings);
+        try { setPreferences(await window.rattib.saveSettings(settings)); }
+        catch (error) { setPreferences(previous); throw error; }
+      }}
       onShortcut={async () => { const path = await window.rattib.createShortcut(); if (path) setNotice(tr('shortcutSaved', { path })); }} />}
   </main>;
 }

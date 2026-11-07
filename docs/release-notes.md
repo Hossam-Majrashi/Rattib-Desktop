@@ -1,12 +1,19 @@
-## Rattib Desktop 0.2.0 — experimental release
+## Rattib Desktop 0.2.1 — experimental release
 
 Manual tool inventory, per-platform commands, an interactive PTY terminal, explicit execution confirmations, and optional version checks.
 
-### New in 0.2.0
+### Changed in 0.2.1
+- Remove manual existing-tool association from the UI and IPC API.
+- Every Install click performs a fresh version check, even for a cached installation. A detected tool is not reinstalled.
+- Update verifies presence first, requests separate consent for the updater, then checks and saves the actual version after success. Installation also gets a post-success version check.
+- Failed checks do not prove absence or silently start an installer. Install/Update require an explicit version command.
+- Preserve one PTY session across workflow phases, including its dimensions. Stopping prevents later phases.
+- Apply and persist language/Arabic-preview settings immediately; no confirmation button. Theme page, dialog, textarea and terminal scrollbars to match the app.
+
+### Retained from 0.2.0
 - Arabic/English interface and native confirmations, with saved language preferences.
 - Launch commands and clearer editing without deleting a tool card; older definitions migrate with no command loss.
-- Persisted installation/version state and explicit manual association for existing tools.
-- Backend duplicate-install protection. Unknown tools with a version command are checked first; failed checks never automatically start an installer.
+- Persisted installation/version state and backend duplicate-install protection. Legacy manual-association records remain readable but are no longer accepted as verified presence.
 - Read-only Arabic output panel using browser bidi/shaping. The interactive terminal remains LTR and command bytes are not reversed.
 - Standard-size Linux launcher icons, pre-launch icon-cache validation, and an explicit per-user shortcut option for packaged AppImage/portable Linux builds.
 
@@ -32,6 +39,6 @@ Manual tool inventory, per-platform commands, an interactive PTY terminal, expli
 - MSI installation is machine-wide and requires administrator consent. The NSIS installer is per-user.
 - AppImage zsync files support external zsync downloads; automatic self-updating and AppImageUpdate discovery are not implemented.
 - No background device scans, automatic updates, encrypted secret storage, or terminal-session file logging. Existing-tool checks run only for user-added tools after explicit approval.
-- Presence is cached, not continuously monitored. Manual association and a successful launch are not proof of a verified version.
+- Presence is cached, not continuously monitored. Install/Update recheck it on demand. A successful launch is not proof of a verified version.
 - Arabic reading mode is read-only and may not preserve cursor-heavy TUI layouts. Use the original terminal for input.
 - Compare SHA256SUMS before using downloaded assets. Checksums alone are not a publisher signature.
