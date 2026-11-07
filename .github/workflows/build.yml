@@ -130,6 +130,11 @@ jobs:
       - run: npm run check
       - run: npm run test:smoke
       - run: npx --no-install electron-builder --mac dmg --${{ matrix.arch }} --publish never
+      - name: Verify Universal executable and native PTY slices
+        if: matrix.arch == 'universal'
+        run: |
+          lipo -verify_arch x86_64 arm64 "release/mac-universal/Rattib Desktop.app/Contents/MacOS/Rattib Desktop"
+          lipo -verify_arch x86_64 arm64 "release/mac-universal/Rattib Desktop.app/Contents/Resources/app.asar.unpacked/node_modules/node-pty/build/Release/pty.node"
       - run: node scripts/collect.mjs macos ${{ matrix.arch }}
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

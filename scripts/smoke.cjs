@@ -4,7 +4,6 @@ const { resolve } = require('node:path');
 const profile = process.env.RATTIB_SMOKE_PROFILE;
 if (!profile) throw new Error('Use npm run test:smoke for an isolated test profile.');
 app.setPath('userData', profile);
-if (process.platform === 'linux') app.commandLine.appendSwitch('ozone-platform', 'headless');
 dialog.showMessageBox = async () => ({ response: 1, checkboxChecked: false });
 let finished = false;
 const timeout = setTimeout(() => finish(1, 'SMOKE_TIMEOUT'), 40000);

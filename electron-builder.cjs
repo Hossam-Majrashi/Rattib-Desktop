@@ -37,6 +37,8 @@ module.exports = {
   mac: {
     target: ['dmg'], category: 'public.app-category.developer-tools',
     icon: 'assets/icon.png', hardenedRuntime: true, identity: '-',
+    // These identical files intentionally retain their own architecture in separate directories.
+    x64ArchFiles: '**/node_modules/node-pty/prebuilds/**',
     entitlements: 'assets/entitlements.mac.plist', entitlementsInherit: 'assets/entitlements.mac.plist',
     artifactName: 'Rattib-Desktop-${version}-macos-${arch}.${ext}'
   },

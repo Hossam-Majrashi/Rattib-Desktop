@@ -6,7 +6,8 @@ import electron from 'electron';
 const profile = mkdtempSync(join(tmpdir(), 'rattib-smoke-'));
 let status = 1;
 try {
-  const child = spawnSync(electron, ['scripts/smoke.cjs'], {
+  const args = process.platform === 'linux' ? ['--ozone-platform=headless', 'scripts/smoke.cjs'] : ['scripts/smoke.cjs'];
+  const child = spawnSync(electron, args, {
     stdio: 'inherit', timeout: 60000,
     env: { ...process.env, RATTIB_SMOKE_PROFILE: profile }
   });
