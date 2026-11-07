@@ -1,0 +1,15 @@
+import { readFile, readdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { createHash } from 'node:crypto';
+const { version } = JSON.parse(await readFile('package.json', 'utf8'));
+const directory = process.argv[2] || 'artifacts';
+const expected = [];
+for (const arch of ['x86_64', 'aarch64']) for (const ext of ['AppImage', 'AppImage.zsync', 'deb', 'rpm', 'pkg.tar.zst', 'tar.gz', 'flatpak']) expected.push(`Rattib-Desktop-${version}-linux-${arch}.${ext}`);
+for (const arch of ['x86_64', 'arm64', 'universal']) expected.push(`Rattib-Desktop-${version}-macos-${arch}.dmg`);
+for (const arch of ['x64', 'arm64']) for (const suffix of ['.msi', '-setup.exe', '-portable.zip']) expected.push(`Rattib-Desktop-${version}-windows-${arch}${suffix}`);
+const actual = (await readdir(directory)).filter(name => name.startsWith('Rattib-Desktop-'));
+if (JSON.stringify(actual.sort()) !== JSON.stringify(expected.sort())) throw new Error('Release is incomplete or contains unexpected packages. Expected: ' + expected.join(', '));
+const sums = [];
+for (const name of expected) sums.push(createHash('sha256').update(await readFile(join(directory, name))).digest('hex') + '  ' + name);
+await writeFile(join(directory, 'SHA256SUMS'), sums.join('\n') + '\n');
+console.log('All ' + expected.length + ' expected release assets are present.');

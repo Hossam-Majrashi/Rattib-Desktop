@@ -1,0 +1,51 @@
+{
+  "name": "rattib-desktop",
+  "productName": "Rattib Desktop",
+  "desktopName": "io.github.HossamMajrashi.RattibDesktop.desktop",
+  "version": "0.1.0",
+  "description": "A local, manual-first desktop manager for interactive CLI tools.",
+  "author": "Hossam Majrashi",
+  "license": "MIT",
+  "homepage": "https://github.com/Hossam-Majrashi/Rattib-Desktop",
+  "repository": { "type": "git", "url": "https://github.com/Hossam-Majrashi/Rattib-Desktop.git" },
+  "main": "dist/main.cjs",
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "dev": "npm run build:main && concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && cross-env RATTIB_DEV_URL=http://127.0.0.1:5173 electron .\"",
+    "build:main": "node scripts/build-main.mjs",
+    "build": "npm run typecheck && npm run build:main && vite build",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/*.test.mjs",
+    "check": "npm run typecheck && npm test",
+    "test:smoke": "npm run build && electron scripts/smoke.cjs",
+    "start": "electron .",
+    "postinstall": "electron-builder install-app-deps",
+    "package": "npm run build && electron-builder --publish never",
+    "package:dir": "npm run build && electron-builder --dir --publish never"
+  },
+  "dependencies": {
+    "@xterm/addon-fit": "0.11.0",
+    "@xterm/xterm": "6.0.0",
+    "node-pty": "1.1.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "overrides": {
+    "minimatch": "11.0.5"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.2.1",
+    "concurrently": "10.0.6",
+    "cross-env": "10.1.0",
+    "electron": "45.2.3",
+    "electron-builder": "26.18.0",
+    "esbuild": "0.28.2",
+    "typescript": "7.0.2",
+    "vite": "8.3.6",
+    "wait-on": "9.5.1"
+  }
+}
