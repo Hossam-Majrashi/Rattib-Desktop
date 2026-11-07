@@ -21,6 +21,10 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - name: Configure sandbox helper on the disposable Linux runner
+        run: |
+          sudo chown root:root node_modules/electron/dist/chrome-sandbox
+          sudo chmod 4755 node_modules/electron/dist/chrome-sandbox
       - run: npm run check
       - run: npm audit --omit=dev
       - run: npm run test:smoke

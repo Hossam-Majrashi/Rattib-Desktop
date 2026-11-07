@@ -1,9 +1,8 @@
 // Run under Electron, with a temporary isolated profile and safe commands only.
 const { app, dialog } = require('electron');
-const { mkdtempSync, rmSync } = require('node:fs');
-const { tmpdir } = require('node:os');
-const { join, resolve } = require('node:path');
-const profile = mkdtempSync(join(tmpdir(), 'rattib-smoke-'));
+const { resolve } = require('node:path');
+const profile = process.env.RATTIB_SMOKE_PROFILE;
+if (!profile) throw new Error('Use npm run test:smoke for an isolated test profile.');
 app.setPath('userData', profile);
 if (process.platform === 'linux') app.commandLine.appendSwitch('ozone-platform', 'headless');
 dialog.showMessageBox = async () => ({ response: 1, checkboxChecked: false });
@@ -16,7 +15,6 @@ function finish(code, message) {
   // Do not trigger the normal last-window close path in this test.
   app.exit(code);
 }
-process.on('exit', () => { try { rmSync(profile, { recursive: true, force: true }); } catch {} });
 app.on('web-contents-created', (_event, contents) => {
   contents.once('did-finish-load', async () => {
     try {
