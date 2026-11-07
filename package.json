@@ -2,15 +2,20 @@
   "name": "rattib-desktop",
   "productName": "Rattib Desktop",
   "desktopName": "io.github.HossamMajrashi.RattibDesktop.desktop",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A local, manual-first desktop manager for interactive CLI tools.",
   "author": "Hossam Majrashi",
   "license": "MIT",
   "homepage": "https://github.com/Hossam-Majrashi/Rattib-Desktop",
-  "repository": { "type": "git", "url": "https://github.com/Hossam-Majrashi/Rattib-Desktop.git" },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Hossam-Majrashi/Rattib-Desktop.git"
+  },
   "main": "dist/main.cjs",
   "type": "module",
-  "engines": { "node": ">=24" },
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "dev": "npm run build:main && concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && cross-env RATTIB_DEV_URL=http://127.0.0.1:5173 electron .\"",
     "build:main": "node scripts/build-main.mjs",
