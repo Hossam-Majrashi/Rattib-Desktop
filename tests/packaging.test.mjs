@@ -38,12 +38,18 @@ test('Arch target remains zstd and passes a single-line description to FPM', () 
   assert.ok(!config.pacman.fpm[1].includes('\n'));
 });
 test('Arch CI explicitly installs bsdtar and has its own artifact upload', () => {
-  const workflow = readFileSync(new URL('../.github/workflows/build.yml', import.meta.url), 'utf8');
+  const workflow = readFileSync(new URL('../.github/workflows/build.yml', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
   const job = workflow.split('  archlinux:\n')[1]?.split('  flatpak:\n')[0];
   assert.ok(job, 'Dedicated Arch job must exist.');
   assert.match(job, /apt-get install -y [^\n]*libarchive-tools/);
   assert.match(job, /command -v bsdtar/);
   assert.match(job, /node scripts\/collect\.mjs arch/);
   assert.match(job, /packages-arch-/);
-  assert.match(job, /pacman --noconfirm -U --dbonly --nodeps --noscriptlet/);
+  assert.match(job, /bash scripts\/test-arch-install\.sh/);
+});
+test('Arch install check resolves dependencies instead of bypassing them', () => {
+  const script = readFileSync(new URL('../scripts/test-arch-install.sh', import.meta.url), 'utf8');
+  assert.match(script, /pacman -Syu --noconfirm/);
+  assert.match(script, /pacman -U --noconfirm/);
+  assert.doesNotMatch(script, /--nodeps|--dbonly|--noscriptlet/);
 });

@@ -109,14 +109,9 @@ jobs:
           USE_SYSTEM_FPM: 'true'
       - name: Validate metadata, compression, payload and ELF architecture
         run: node scripts/collect.mjs arch ${{ matrix.arch }}
-      - name: Validate x86_64 package with native pacman
+      - name: Install and validate x86_64 package in a disposable Arch container
         if: matrix.arch == 'x64'
-        run: |
-          docker run --rm -v "$PWD/artifacts:/packages:ro" archlinux:base bash -euc '
-            pacman -Qip /packages/*.pkg.tar.zst
-            pacman --noconfirm -U --dbonly --nodeps --noscriptlet /packages/*.pkg.tar.zst
-            pacman -Q rattib-desktop
-          '
+        run: bash scripts/test-arch-install.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: packages-arch-${{ matrix.arch }}
