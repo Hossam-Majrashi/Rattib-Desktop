@@ -37,6 +37,9 @@ function finish(code, message) {
   }
   console.log(message); app.exit(code);
 }
+// Do not let Electron's default modal error dialog hide a CI exception forever.
+process.on('uncaughtException', error => finish(1, error.stack ?? String(error)));
+process.on('unhandledRejection', error => finish(1, error?.stack ?? String(error)));
 app.on('web-contents-created', (_event, contents) => {
   contents.setBackgroundThrottling(false);
   const focusWindow = () => {
