@@ -1,4 +1,10 @@
-## Rattib Desktop 0.2.3 — experimental release
+## Rattib Desktop 0.2.4 — experimental release
+
+### Changed in 0.2.4
+- Stabilize the Electron smoke runner on CI: prevent background throttling in the isolated test, poll actual display changes instead of waiting indefinitely for an animation frame, and focus the window before native keyboard input.
+- Capture Electron process output and handle uncaught startup errors without a blocking native error dialog. Publish bounded process diagnostics and stage-specific GitHub error annotations on failure.
+- Add Windows ARM64 runtime regression coverage on every main-branch push, including switching terminal displays while the window is hidden. Retain all keyboard/Arabic assertions and strict failure handling.
+- Verify the revised smoke runner on the native Windows ARM64 GitHub runner before rebuilding packages.
 
 ### Changed in 0.2.3
 - Render connected Arabic lines inside the live terminal instead of a separate read-only panel. xterm still handles PTY parsing and all keyboard, paste and IME input; input bytes are unchanged.

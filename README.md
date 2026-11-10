@@ -135,11 +135,11 @@ npm run package:dir   # تطبيق غير مغلف للنظام الحالي
 المستودع: <https://github.com/Hossam-Majrashi/Rattib-Desktop>
 
 - **Validate** يعمل عند الدفع إلى `main` وطلبات الدمج.
-- **Build desktop packages** يعمل عند دفع tag مثل `v0.2.3` أو يدويًا من Actions.
+- **Build desktop packages** يعمل عند دفع tag مثل `v0.2.4` أو يدويًا من Actions.
 - يجب أن يطابق tag الإصدار في `package.json`.
 - تُبنى الحزم على runners أصلية مناسبة لكل معمارية، وتُرفع كمرفقات Actions لمدة 14 يومًا.
 - Arch له مهمتا بناء مستقلتان باسم **Arch Linux (x64)** و**Arch Linux (arm64)**، ومرفقاتهما **packages-arch-x64** و**packages-arch-arm64**. افتح تشغيل البناء ثم قسم **Artifacts** للتنزيل؛ فشل منصة أخرى لا يمنع رفع حزمة Arch الناجحة.
-- ملفات Arch المتوقعة للإصدار 0.2.3: `Rattib-Desktop-0.2.3-linux-x86_64.pkg.tar.zst` و`Rattib-Desktop-0.2.3-linux-aarch64.pkg.tar.zst`. معمارية aarch64 موجهة لبيئات Arch Linux ARM، لا مستودعات Arch الرسمية التي تدعم x86_64.
+- ملفات Arch المتوقعة للإصدار 0.2.4: `Rattib-Desktop-0.2.4-linux-x86_64.pkg.tar.zst` و`Rattib-Desktop-0.2.4-linux-aarch64.pkg.tar.zst`. معمارية aarch64 موجهة لبيئات Arch Linux ARM، لا مستودعات Arch الرسمية التي تدعم x86_64.
 - عند tag، لا تُنشأ مسودة Release إلا بعد نجاح كل مصفوفات البناء والتحقق من وجود **23 ملف حزمة**. تُضاف `SHA256SUMS`؛ لا تُنشر المسودة للعامة تلقائيًا.
 - التشغيل اليدوي يبني المرفقات فقط ولا ينشئ إصدارًا.
 - توافر runners وحصة Actions يعتمد على إعدادات المستودع وخطة GitHub؛ ليست كل الاستخدامات مجانية بالضرورة.
@@ -149,7 +149,7 @@ npm run package:dir   # تطبيق غير مغلف للنظام الحالي
 بعد تنزيل مرفق Arch وفك ضغط ZIP، استخدم حزمة **`.pkg.tar.zst`**:
 
 ```sh
-sudo pacman -U ./Rattib-Desktop-0.2.3-linux-x86_64.pkg.tar.zst
+sudo pacman -U ./Rattib-Desktop-0.2.4-linux-x86_64.pkg.tar.zst
 ```
 
 **ملف `.tar.gz` أرشيف محمول، وليس حزمة pacman.** لا تغيّر امتداده ولا تمرّره إلى `pacman -U`.
@@ -167,12 +167,12 @@ sudo pacman -U ./Rattib-Desktop-0.2.3-linux-x86_64.pkg.tar.zst
 نمط الاسم:
 
 ```text
-Rattib-Desktop-0.2.3-linux-x86_64.AppImage
-Rattib-Desktop-0.2.3-linux-aarch64.pkg.tar.zst
-Rattib-Desktop-0.2.3-macos-universal.dmg
-Rattib-Desktop-0.2.3-windows-arm64.msi
-Rattib-Desktop-0.2.3-windows-x64-setup.exe
-Rattib-Desktop-0.2.3-windows-x64-portable.zip
+Rattib-Desktop-0.2.4-linux-x86_64.AppImage
+Rattib-Desktop-0.2.4-linux-aarch64.pkg.tar.zst
+Rattib-Desktop-0.2.4-macos-universal.dmg
+Rattib-Desktop-0.2.4-windows-arm64.msi
+Rattib-Desktop-0.2.4-windows-x64-setup.exe
+Rattib-Desktop-0.2.4-windows-x64-portable.zip
 ```
 
 #### قيود مؤثرة
@@ -327,7 +327,7 @@ Smoke tests use a safe local fixture, not Pi or Hermes installers. They cover TT
 Repository: <https://github.com/Hossam-Majrashi/Rattib-Desktop>
 
 - **Validate** runs for pushes to `main` and pull requests.
-- **Build desktop packages** runs for version tags such as `v0.2.3` or manually from Actions. The tag must match `package.json`.
+- **Build desktop packages** runs for version tags such as `v0.2.4` or manually from Actions. The tag must match `package.json`.
 - Builds use native runners for their target architectures. Actions artifacts have **14-day retention** and may require GitHub sign-in.
 - Arch has independent **Arch Linux (x64)** and **Arch Linux (arm64)** jobs and `packages-arch-x64` / `packages-arch-arm64` artifacts. A different platform’s failure does not hide an uploaded Arch package.
 - Tag builds create a **draft** release only after all matrices pass and all **23 expected package files** are verified. `SHA256SUMS` is added. Drafts are not published publicly automatically.
@@ -342,7 +342,7 @@ Repository: <https://github.com/Hossam-Majrashi/Rattib-Desktop>
 For Arch x86_64, download and extract the ZIP artifact, then install the **`.pkg.tar.zst`** package:
 
 ```sh
-sudo pacman -U ./Rattib-Desktop-0.2.3-linux-x86_64.pkg.tar.zst
+sudo pacman -U ./Rattib-Desktop-0.2.4-linux-x86_64.pkg.tar.zst
 ```
 
 **The `.tar.gz` portable archive is not a pacman package.** Do not rename it or pass it to `pacman -U`. The aarch64 package targets Arch Linux ARM, not official Arch’s x86_64 repositories.
