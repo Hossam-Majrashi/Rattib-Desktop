@@ -134,6 +134,36 @@ app.on('web-contents-created', (_event, contents) => {
         if (card('safe-fixture').querySelector('[data-action="install"]').disabled) throw new Error('Fresh detection button was disabled for a cached installation');
         if (document.body.textContent.includes('Link as existing')) throw new Error('Manual association button still visible');
         if (document.querySelector('[data-action="latest"]') || document.body.textContent.includes('Latest from source')) throw new Error('Removed update-check UI is still visible');
+        // Exercise the actual Update button with multi-version CLI output over a real PTY.
+        const tools = await window.rattib.list();
+        const platform = (await window.rattib.info()).platform;
+        const profile = tools.find(tool => tool.id === 'safe-fixture').profiles[platform];
+        const originalVersion = profile.commands.version;
+        const base = 'node ' + JSON.stringify(${JSON.stringify(fixture)});
+        for (const [mode, version] of [['strata', '0.2.12'], ['strata-updated', '0.2.13.1'], ['hermes', '0.23.1']]) {
+          profile.commands.version = base + ' --' + mode + '-version';
+          await window.rattib.save(tools);
+          const seen = [];
+          const off = window.rattib.onTerminal(event => seen.push(event));
+          try {
+            await wait(() => !card('safe-fixture').querySelector('[data-action="update"]').disabled);
+            card('safe-fixture').querySelector('[data-action="update"]').click();
+            await wait(() => seen.some(event => event.type === 'exit'));
+            const phases = seen.filter(event => event.type === 'phase').map(event => event.action);
+            if (JSON.stringify(phases) !== JSON.stringify(['version', 'update', 'version'])) throw new Error(mode + ' version output blocked the Update button');
+            if (!seen.some(event => event.type === 'data' && event.data.includes('UPDATE_EXECUTED'))) throw new Error(mode + ' updater did not execute');
+            const state = (await window.rattib.presence())['safe-fixture'];
+            if (state.status !== 'verified' || state.installedVersion !== version) throw new Error(mode + ' product version not saved after update');
+          } finally { off(); }
+        }
+        profile.commands.version = originalVersion;
+        await window.rattib.save(tools);
+        const restored = [];
+        const offRestore = window.rattib.onTerminal(event => restored.push(event));
+        try {
+          const run = await window.rattib.run('safe-fixture', 'version');
+          await wait(() => restored.some(event => event.type === 'exit' && event.id === run.id));
+        } finally { offRestore(); }
         card('safe-fixture').querySelector('[data-ui="edit"]').click();
         await wait(() => document.querySelector('dialog[open] textarea[data-command="update"]'));
         if (document.querySelector('dialog[open] input[type="checkbox"]')) throw new Error('Manual association option still in tool editor');
@@ -188,7 +218,7 @@ app.on('web-contents-created', (_event, contents) => {
         const arabicLine = [...document.querySelectorAll('.connected-output>div')].find(line => line.textContent.includes('تأكيد إلغاء التثبيت؟'));
         if (!arabicLine || getComputedStyle(arabicLine).direction !== 'rtl') throw new Error('Arabic reading direction failed');
         if ((await window.rattib.settings()).language !== 'ar') throw new Error('UI language preference not saved');
-        return { englishUI: true, arabicUI: true, persistedPresence: true, editWithoutDeleting: true, launch: true, readableArabic: true, terminalNotReversed: true, instantLanguage: true, themedScrollbars: true, updaterConfigurationWarning: true, updateConfirmationPlan: true };
+        return { multiVersionUpdateButtons: true, englishUI: true, arabicUI: true, persistedPresence: true, editWithoutDeleting: true, launch: true, readableArabic: true, terminalNotReversed: true, instantLanguage: true, themedScrollbars: true, updaterConfigurationWarning: true, updateConfirmationPlan: true };
       })()`);
       // Drive real Electron keyboard events through the original xterm textarea,
       // while only the connected Arabic display is visible.

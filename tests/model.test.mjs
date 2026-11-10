@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { validateTools, blankProfile, commandIssue, extractVersion, compareVersions, toolActions, commandExamples } from '../src/shared/model.ts';
 import { shellCommand } from '../src/main/shell.ts';
+import { strataVersion, strataUpdatedVersion, hermesVersion } from './version-output.mjs';
 const tool = () => ({ id: 'test-tool', name: ' Test ', profiles: { linux: blankProfile() } });
 test('manual empty inventory is valid', () => assert.deepEqual(validateTools([]), []));
 test('normalizes names and preserves exact commands', () => {
@@ -52,10 +53,25 @@ test('extracts an unambiguous version with ANSI colors', () => {
   assert.equal(extractVersion('v2.0.0-beta.1+build.5'), '2.0.0-beta.1+build.5');
   assert.equal(extractVersion('1.5.0\n1.5.0'), '1.5.0');
 });
+test('reads product headers without mistaking build, Python or SDK versions for the tool', () => {
+  assert.equal(extractVersion(strataVersion), '0.2.12');
+  assert.equal(extractVersion(hermesVersion), '0.23.1');
+  assert.equal(extractVersion(strataUpdatedVersion), '0.2.13.1');
+  assert.equal(extractVersion('v1.2.3.4'), '1.2.3.4');
+  assert.equal(extractVersion('\x1b[32m' + strataVersion + '\x1b[0m\r\n'), '0.2.12');
+  assert.equal(extractVersion('\r\n' + hermesVersion.replaceAll('\n', '\r\n')), '0.23.1');
+  assert.equal(extractVersion('Example CLI version: 1.2.3-beta.1+build.5\nPython: 3.12.0'), '1.2.3-beta.1+build.5');
+  assert.equal(extractVersion('Example CLI v1.2.3 · stable\nSDK: 4.5.6'), '1.2.3');
+});
 test('does not guess from ambiguous logs, errors, or two-part versions', () => {
   assert.equal(extractVersion('current 1.0.0 latest 2.0.0'), null);
   assert.equal(extractVersion('not installed'), null);
   assert.equal(extractVersion('1.5'), null);
+  assert.equal(extractVersion('1.2.3.4.5'), null);
+  assert.equal(extractVersion('tool 1.2.3.4 dependency 2.3.4.5'), null);
+  assert.equal(extractVersion('current 1.0.0 (latest 2.0.0)'), null);
+  assert.equal(extractVersion('Error v1.0.0\nExpected 2.0.0'), null);
+  assert.equal(extractVersion('tool 1.5.0 dependency 2.0.0'), null);
 });
 test('compares stable versions numerically, not lexically', () => {
   assert.equal(compareVersions('1.9.0', '1.10.0'), 'available');

@@ -1,4 +1,8 @@
 // Safe PTY fixture. No installation, network access, or filesystem writes.
+import { strataVersion, strataUpdatedVersion, hermesVersion } from './version-output.mjs';
+if (process.argv.includes('--strata-version')) { console.log(strataVersion); process.exit(0); }
+if (process.argv.includes('--strata-updated-version')) { console.log(strataUpdatedVersion); process.exit(0); }
+if (process.argv.includes('--hermes-version')) { console.log(hermesVersion); process.exit(0); }
 if (process.argv.includes('--version')) { console.log('1.5.0'); process.exit(0); }
 if (process.argv.includes('--missing')) { console.error('NOT_FOUND_FIXTURE'); process.exit(127); }
 if (process.argv.includes('--update-marker')) { console.log('UPDATE_EXECUTED'); process.exit(0); }

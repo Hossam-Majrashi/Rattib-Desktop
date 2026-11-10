@@ -1,4 +1,10 @@
-## Rattib Desktop 0.2.4 — experimental release
+## Rattib Desktop 0.2.5 — experimental release
+
+### Fixed in 0.2.5
+- Fix Update stopping before the updater for Strata and Hermes: their version output also includes build, Python and SDK versions. Read the explicit product-version header instead of treating those dependency versions as an ambiguous installation.
+- Support three- and four-part product versions, including Strata’s `0.2.13.1` after updating, without truncating longer dotted strings. Non-semver version comparison remains manual.
+- Retain strict rejection of ambiguous logs, nonzero version checks, separate updater approval and post-update verification. Saved commands are never rewritten.
+- Add representative CLI-output regression tests and real Electron Update-button smoke coverage for both output formats. Automated tests still use safe local fixtures and never update user tools.
 
 ### Changed in 0.2.4
 - Stabilize the Electron smoke runner on CI: prevent background throttling in the isolated test, poll actual display changes instead of waiting indefinitely for an animation frame, and focus the window before native keyboard input.

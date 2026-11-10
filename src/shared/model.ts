@@ -102,9 +102,15 @@ export function validateTools(value: unknown): Tool[] {
   });
 }
 export function extractVersion(text: string): string | null {
-  // Only accept an unambiguous three-part version; never guess from arbitrary logs.
   const plain = text.replace(/\x1b\][^\x07]*(?:\x07|\x1b\\)/g, '').replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '');
-  const matches = [...plain.matchAll(/\bv?(\d{1,9}\.\d{1,9}\.\d{1,9}(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?)(?![\w.])/g)].map(m => m[1]);
+  const version = String.raw`\d{1,9}(?:\.\d{1,9}){2,3}(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?`;
+  // Some CLIs print build/runtime/dependency versions as well as their own.
+  // Prefer an explicit product-version header on the first nonempty line, not
+  // the first number in arbitrary logs. Unmarked/ambiguous output stays strict.
+  const firstLine = plain.split(/\r?\n/).find(line => line.trim())?.trim() ?? '';
+  const header = firstLine.match(new RegExp(`^([A-Za-z][A-Za-z0-9_.-]*(?: [A-Za-z][A-Za-z0-9_.-]*)*) (v|version[: ]+)?(${version})((?:\\s+\\([^\\r\\n]*\\))?(?:\\s+[·|] [^\\r\\n]*)?)$`, 'i'));
+  if (header && (header[2] || header[4]) && !/^(?:current|latest|installed|available|dependency|runtime|python|node|error|warning)\b/i.test(header[1])) return header[3];
+  const matches = [...plain.matchAll(new RegExp(`(?<![\\w.])v?(${version})(?![\\w.])`, 'g'))].map(m => m[1]);
   const unique = [...new Set(matches)];
   return unique.length === 1 ? unique[0] : null;
 }

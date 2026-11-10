@@ -7,6 +7,7 @@ import { ToolOperation } from '../src/main/operation.ts';
 import { LocalStore } from '../src/main/store.ts';
 import { blankProfile } from '../src/shared/model.ts';
 import { t } from '../src/shared/i18n.ts';
+import { strataVersion, strataUpdatedVersion, hermesVersion } from './version-output.mjs';
 
 async function setup(context, action, approved = true) {
   const directory = await mkdtemp(join(tmpdir(), 'rattib-operation-test-'));
@@ -52,6 +53,18 @@ test('Update checks presence before modifying, then reads and saves the new vers
   assert.equal(s.events.filter(e => e.type === 'exit').length, 1);
   assert.ok(s.events.filter(e => e.type === 'phase').every(e => e.id === s.operation.run.id));
 });
+for (const [name, before, after, version] of [['strata', strataVersion, strataUpdatedVersion, '0.2.13.1'], ['hermes', hermesVersion, hermesVersion, '0.23.1']]) {
+  test(name + ' output with runtime versions does not block the approved updater', async context => {
+    const s = await setup(context, 'update');
+    await s.operation.start(); await s.complete(before);
+    assert.deepEqual(s.children.map(c => c.command), ['VERSION', 'UPDATE']);
+    assert.deepEqual(s.confirmations, [{ action: 'update', kind: 'command' }]);
+    await s.complete('Updated'); await s.complete(after);
+    assert.equal(s.store.state('fixture').status, 'verified');
+    assert.equal(s.store.state('fixture').installedVersion, version);
+    assert.equal(s.operation.run.running, false);
+  });
+}
 test('latest checks the release source only, never the local version or updater', async context => {
   const s = await setup(context, 'latest');
   await s.operation.start(); await s.complete('1.6.0');
