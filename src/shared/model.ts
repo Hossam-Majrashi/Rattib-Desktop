@@ -52,6 +52,16 @@ export interface API {
 export function blankProfile(): Profile {
   return { shell: 'auto', commands: { install: '', launch: '', version: '', latest: '', update: '', uninstall: '' } };
 }
+// Check configuration without rewriting user commands or guessing an updater.
+export function commandIssue(profile: Profile | undefined, action: Action): 'errorCommand' | 'versionRequired' | 'updateMatchesVersion' | 'latestMatchesVersion' | null {
+  const command = profile?.commands[action].trim();
+  if (!command) return 'errorCommand';
+  const version = profile!.commands.version.trim();
+  if ((action === 'install' || action === 'update') && !version) return 'versionRequired';
+  if (action === 'update' && command === version) return 'updateMatchesVersion';
+  if (action === 'latest' && command === version) return 'latestMatchesVersion';
+  return null;
+}
 export function validateTools(value: unknown): Tool[] {
   if (!Array.isArray(value) || value.length > 500) throw new Error('Invalid tool list (maximum 500).');
   const ids = new Set<string>();

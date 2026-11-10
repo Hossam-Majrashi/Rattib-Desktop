@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateTools, blankProfile, extractVersion, compareVersions } from '../src/shared/model.ts';
+import { validateTools, blankProfile, commandIssue, extractVersion, compareVersions } from '../src/shared/model.ts';
 import { shellCommand } from '../src/main/shell.ts';
 const tool = () => ({ id: 'test-tool', name: ' Test ', profiles: { linux: blankProfile() } });
 test('manual empty inventory is valid', () => assert.deepEqual(validateTools([]), []));
@@ -21,6 +21,22 @@ test('rejects oversized commands and inventories', () => {
 test('does not permit Windows shells on Linux or POSIX shells directly on Windows', () => {
   const t = tool(); t.profiles.linux.shell = 'wsl'; assert.throws(() => validateTools([t]));
   assert.throws(() => validateTools([{ ...tool(), profiles: { win32: { ...blankProfile(), shell: 'bash' } } }]));
+});
+test('version, latest-source and updater commands have distinct roles', () => {
+  const profile = blankProfile();
+  assert.equal(commandIssue(profile, 'update'), 'errorCommand');
+  profile.commands.update = 'pi update';
+  assert.equal(commandIssue(profile, 'update'), 'versionRequired');
+  profile.commands.version = 'pi -v';
+  assert.equal(commandIssue(profile, 'version'), null);
+  assert.equal(commandIssue(profile, 'update'), null);
+  profile.commands.update = '  pi -v\n';
+  profile.commands.latest = 'pi -v';
+  assert.equal(commandIssue(profile, 'update'), 'updateMatchesVersion');
+  assert.equal(commandIssue(profile, 'latest'), 'latestMatchesVersion');
+  profile.commands.latest = 'fetch-latest-release';
+  assert.equal(commandIssue(profile, 'latest'), null);
+  assert.equal(commandIssue(undefined, 'version'), 'errorCommand');
 });
 test('extracts an unambiguous version with ANSI colors', () => {
   assert.equal(extractVersion('\x1b[32mPi v1.5.0\x1b[0m\r\n'), '1.5.0');

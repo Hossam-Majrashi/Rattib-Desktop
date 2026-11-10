@@ -57,7 +57,7 @@ A local desktop manager for CLI tools you add manually, with an interactive term
 | التثبيت على نظام يدعم الأمر | `curl -fsSL https://pi.dev/install.sh \| sh` |
 | قراءة الإصدار | `pi -v` |
 | التشغيل | `pi` |
-| التحديث | `pi update` |
+| التحديث | أمر التحديث الرسمي حسب طريقة تثبيت الأداة؛ ليس `pi -v` |
 | الإزالة | `pi uninstall` |
 
 تحقق من أوامر التحديث والإزالة الفعلية في توثيق الأداة قبل حفظها. الأمر `hermes uninstall --full` مثلًا، إذا أضفته، يعمل في الطرفية وستكتب أنت اختيارك عند `Select option [1/2/3]:`.
@@ -90,7 +90,9 @@ A local desktop manager for CLI tools you add manually, with an interactive term
 
 #### الإصدار والتحديث
 
-- `pi -v` يقرأ الإصدار المحلي، ولا يثبت وحده وجود تحديث.
+- `pi -v` يقرأ الإصدار المحلي، ولا يبحث عن تحديث ولا يثبّته. لا تفترض أن كل نسخة من Pi تدعم `pi update`؛ استخدم أمر التحديث الموثق لطريقة تثبيتك.
+- التحقق من الإصدار يشغّل أمر الإصدار المحلي فقط. التحقق من التحديث يشغّل أمر مصدر الإصدارات فقط. التحديث يفحص الإصدار، ثم يشغّل المحدّث بعد موافقة مستقلة، ثم يفحص الإصدار مجددًا.
+- تعرض نافذة التحديث الأولى أمر المحدّث الفعلي والفحص اللاحق، وتظهر مراحل التنفيذ في الطرفية. إذا كان أمر التحديث أو مصدر الإصدارات مطابقًا لأمر الإصدار المحلي، يُعطّل الزر مع توضيح السبب؛ أصلح الحقل في **تعديل الأوامر**. لا تُستبدل أوامرك تلقائيًا.
 - ضمن الخيارات المتقدمة، أدخل أمرًا موثوقًا يعرض آخر إصدار متاح من مصدر تختاره. هذا الأمر مستقل عن أمر التحديث، ولا ينشئ التطبيق مصدرًا من تلقاء نفسه.
 - لا يستطيع Rattib ضمان أن الأمر الذي سميته «تحقق من تحديث» للقراءة فقط؛ أنت المسؤول عن محتواه.
 - يُستخرج رقم ثلاثي واضح مثل `1.5.0` بعد خروج ناجح فقط. إذا وُجدت أرقام إصدارات متعددة مختلفة لا يخمّن التطبيق.
@@ -135,11 +137,11 @@ npm run package:dir   # تطبيق غير مغلف للنظام الحالي
 المستودع: <https://github.com/Hossam-Majrashi/Rattib-Desktop>
 
 - **Validate** يعمل عند الدفع إلى `main` وطلبات الدمج.
-- **Build desktop packages** يعمل عند دفع tag مثل `v0.2.1` أو يدويًا من Actions.
+- **Build desktop packages** يعمل عند دفع tag مثل `v0.2.2` أو يدويًا من Actions.
 - يجب أن يطابق tag الإصدار في `package.json`.
 - تُبنى الحزم على runners أصلية مناسبة لكل معمارية، وتُرفع كمرفقات Actions لمدة 14 يومًا.
 - Arch له مهمتا بناء مستقلتان باسم **Arch Linux (x64)** و**Arch Linux (arm64)**، ومرفقاتهما **packages-arch-x64** و**packages-arch-arm64**. افتح تشغيل البناء ثم قسم **Artifacts** للتنزيل؛ فشل منصة أخرى لا يمنع رفع حزمة Arch الناجحة.
-- ملفات Arch المتوقعة للإصدار 0.2.1: `Rattib-Desktop-0.2.1-linux-x86_64.pkg.tar.zst` و`Rattib-Desktop-0.2.1-linux-aarch64.pkg.tar.zst`. معمارية aarch64 موجهة لبيئات Arch Linux ARM، لا مستودعات Arch الرسمية التي تدعم x86_64.
+- ملفات Arch المتوقعة للإصدار 0.2.2: `Rattib-Desktop-0.2.2-linux-x86_64.pkg.tar.zst` و`Rattib-Desktop-0.2.2-linux-aarch64.pkg.tar.zst`. معمارية aarch64 موجهة لبيئات Arch Linux ARM، لا مستودعات Arch الرسمية التي تدعم x86_64.
 - عند tag، لا تُنشأ مسودة Release إلا بعد نجاح كل مصفوفات البناء والتحقق من وجود **23 ملف حزمة**. تُضاف `SHA256SUMS`؛ لا تُنشر المسودة للعامة تلقائيًا.
 - التشغيل اليدوي يبني المرفقات فقط ولا ينشئ إصدارًا.
 - توافر runners وحصة Actions يعتمد على إعدادات المستودع وخطة GitHub؛ ليست كل الاستخدامات مجانية بالضرورة.
@@ -149,7 +151,7 @@ npm run package:dir   # تطبيق غير مغلف للنظام الحالي
 بعد تنزيل مرفق Arch وفك ضغط ZIP، استخدم حزمة **`.pkg.tar.zst`**:
 
 ```sh
-sudo pacman -U ./Rattib-Desktop-0.2.1-linux-x86_64.pkg.tar.zst
+sudo pacman -U ./Rattib-Desktop-0.2.2-linux-x86_64.pkg.tar.zst
 ```
 
 **ملف `.tar.gz` أرشيف محمول، وليس حزمة pacman.** لا تغيّر امتداده ولا تمرّره إلى `pacman -U`.
@@ -167,12 +169,12 @@ sudo pacman -U ./Rattib-Desktop-0.2.1-linux-x86_64.pkg.tar.zst
 نمط الاسم:
 
 ```text
-Rattib-Desktop-0.2.1-linux-x86_64.AppImage
-Rattib-Desktop-0.2.1-linux-aarch64.pkg.tar.zst
-Rattib-Desktop-0.2.1-macos-universal.dmg
-Rattib-Desktop-0.2.1-windows-arm64.msi
-Rattib-Desktop-0.2.1-windows-x64-setup.exe
-Rattib-Desktop-0.2.1-windows-x64-portable.zip
+Rattib-Desktop-0.2.2-linux-x86_64.AppImage
+Rattib-Desktop-0.2.2-linux-aarch64.pkg.tar.zst
+Rattib-Desktop-0.2.2-macos-universal.dmg
+Rattib-Desktop-0.2.2-windows-arm64.msi
+Rattib-Desktop-0.2.2-windows-x64-setup.exe
+Rattib-Desktop-0.2.2-windows-x64-portable.zip
 ```
 
 #### قيود مؤثرة
@@ -249,7 +251,7 @@ An illustrative definition, **not a guarantee that these are the correct command
 | Install on a compatible system | `curl -fsSL https://pi.dev/install.sh \| sh` |
 | Installed version | `pi -v` |
 | Launch | `pi` |
-| Update | `pi update` |
+| Update | The official updater for your installation method; not `pi -v` |
 | Uninstall | `pi uninstall` |
 
 Check the tool’s own documentation before saving update or uninstall commands. If you configure a command such as `hermes uninstall --full`, its original prompts appear in the terminal; you enter your own answer at prompts such as `Select option [1/2/3]:`.
@@ -282,7 +284,9 @@ For AppImage and portable Linux builds, use **Settings → Add application-menu 
 
 ### Versions and updates
 
-- A local command such as `pi -v` reports the installed version; it does not discover the latest release.
+- A local command such as `pi -v` reports the installed version; it neither discovers nor installs updates. Do not assume every Pi distribution supports `pi update`; use the updater documented for your installation method.
+- Check installed version runs only the local version command. Check for updates runs only the release-source command. Update checks locally, runs the actual updater after separate approval, then checks locally again.
+- The initial update confirmation shows the actual updater and post-check; terminal output labels each execution phase. Update and Check for updates are disabled with an explanation if configured with the same command as the local version check. Fix the field in **Edit commands**; saved commands are never silently replaced.
 - In advanced settings, provide a trusted command that prints the latest version from a source you choose. Rattib does not invent a source or run the updater merely to check for releases.
 - Rattib cannot guarantee that a command named “Check for updates” is read-only. You are responsible for its contents.
 - Version extraction requires a successful exit and one unambiguous three-part version, such as `1.5.0`. Rattib does not guess between different version numbers in logs.
@@ -327,7 +331,7 @@ Smoke tests use a safe local fixture, not Pi or Hermes installers. They cover TT
 Repository: <https://github.com/Hossam-Majrashi/Rattib-Desktop>
 
 - **Validate** runs for pushes to `main` and pull requests.
-- **Build desktop packages** runs for version tags such as `v0.2.1` or manually from Actions. The tag must match `package.json`.
+- **Build desktop packages** runs for version tags such as `v0.2.2` or manually from Actions. The tag must match `package.json`.
 - Builds use native runners for their target architectures. Actions artifacts have **14-day retention** and may require GitHub sign-in.
 - Arch has independent **Arch Linux (x64)** and **Arch Linux (arm64)** jobs and `packages-arch-x64` / `packages-arch-arm64` artifacts. A different platform’s failure does not hide an uploaded Arch package.
 - Tag builds create a **draft** release only after all matrices pass and all **23 expected package files** are verified. `SHA256SUMS` is added. Drafts are not published publicly automatically.
@@ -342,7 +346,7 @@ Repository: <https://github.com/Hossam-Majrashi/Rattib-Desktop>
 For Arch x86_64, download and extract the ZIP artifact, then install the **`.pkg.tar.zst`** package:
 
 ```sh
-sudo pacman -U ./Rattib-Desktop-0.2.1-linux-x86_64.pkg.tar.zst
+sudo pacman -U ./Rattib-Desktop-0.2.2-linux-x86_64.pkg.tar.zst
 ```
 
 **The `.tar.gz` portable archive is not a pacman package.** Do not rename it or pass it to `pacman -U`. The aarch64 package targets Arch Linux ARM, not official Arch’s x86_64 repositories.

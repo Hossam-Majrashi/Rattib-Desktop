@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { IPty } from 'node-pty';
-import { extractVersion, type Action, type Platform, type Presence, type Profile, type Run, type TerminalEvent, type Tool } from '../shared/model.ts';
+import { commandIssue, extractVersion, type Action, type Platform, type Presence, type Profile, type Run, type TerminalEvent, type Tool } from '../shared/model.ts';
 import type { MessageKey } from '../shared/i18n.ts';
 import type { LocalStore } from './store.ts';
 
@@ -31,7 +31,8 @@ export class ToolOperation {
   }
   async start(): Promise<Run> {
     try {
-      if (['install', 'update'].includes(this.run.action) && !this.host.profile.commands.version.trim()) throw new Error(this.host.text('versionRequired'));
+      const issue = commandIssue(this.host.profile, this.run.action);
+      if (issue) throw new Error(this.host.text(issue));
       const starting = this.startPhase(this.run.phase, ['install', 'update'].includes(this.run.action) ? 'preflight' : 'command');
       this.completion = starting.catch(() => undefined);
       await starting;
@@ -66,6 +67,7 @@ export class ToolOperation {
     if (action === 'latest') await this.state({ latestVersion: undefined });
     if (this.cancelled) { this.finish(130); return; }
     this.assertCurrentProfile();
+    this.host.send({ type: 'data', id: this.run.id, data: '\r\n[Rattib] ' + this.host.text(`phase.${stage}`) + ' — ' + this.host.text(`action.${action}`) + '\r\n' });
     const terminal = this.host.spawn(this.host.profile.commands[action], this.cols, this.rows);
     this.process = terminal; this.exited = false; this.run.phase = action;
     this.host.send({ type: 'phase', id: this.run.id, action });

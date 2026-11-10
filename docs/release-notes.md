@@ -1,4 +1,11 @@
-## Rattib Desktop 0.2.1 — experimental release
+## Rattib Desktop 0.2.2 — experimental release
+
+### Changed in 0.2.2
+- Distinguish installed-version checks, release-source checks and actual updates with Arabic/English command guidance.
+- Show the real installer/updater and post-check in the initial confirmation, not just the local version command. Separate approval before modification is retained.
+- Label preflight, command execution and postflight in the terminal so an update no longer looks like a version-only check.
+- Block Update and Check for updates when their command is identical (ignoring surrounding whitespace) to the installed-version command, in both the UI and backend. Existing definitions remain editable; commands are never silently rewritten.
+- Add regression and Electron smoke tests for command separation, configuration warnings and the update confirmation plan.
 
 Manual tool inventory, per-platform commands, an interactive PTY terminal, explicit execution confirmations, and optional version checks.
 

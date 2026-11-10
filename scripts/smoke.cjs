@@ -41,6 +41,15 @@ app.on('web-contents-created', (_event, contents) => {
           { id: 'existing-launch', name: 'Existing launch tool', profiles: { [info.platform]: { shell: 'auto', commands: { ...commands, version: '', launch: base + ' --launch' } } } },
           { id: 'missing-fixture', name: 'Failed check fixture', profiles: { [info.platform]: { shell: 'auto', commands: { ...commands, launch: '', version: base + ' --missing' } } } }
         ];
+        const invalid = structuredClone(tools);
+        invalid[0].profiles[info.platform].commands.update = commands.version;
+        invalid[0].profiles[info.platform].commands.latest = commands.version;
+        await window.rattib.save(invalid);
+        for (const action of ['update', 'latest']) {
+          let rejected = false;
+          try { await window.rattib.run('safe-fixture', action); } catch { rejected = true; }
+          if (!rejected) throw new Error('IPC accepted local-version command as ' + action);
+        }
         await window.rattib.save(tools);
         const seen = [];
         const off = window.rattib.onTerminal(event => seen.push(event));
@@ -78,6 +87,8 @@ app.on('web-contents-created', (_event, contents) => {
         off();
         return { tty: true, arrows: true, numericInput: true, legacyMigration: true, duplicateInstallBlocked: true, detectionFailureSafe: true, freshChecks: true, updatePreAndPostChecks: true, noManualAssociation: true, rendererIsolated: true };
       })()`);
+      const updateProbe = confirmations.find(options => options.title?.startsWith('تحديث —') && options.message === 'التحقق من وجود الأداة؟');
+      if (!updateProbe?.detail.includes('--update-marker') || !updateProbe.detail.includes('--version')) throw new Error('Initial update confirmation does not show the updater and verification plan');
       const loaded = new Promise(resolveLoaded => contents.once('did-finish-load', resolveLoaded));
       contents.reload(); await loaded;
       const ui = await contents.executeJavaScript(`(async () => {
@@ -96,7 +107,14 @@ app.on('web-contents-created', (_event, contents) => {
         const input = document.querySelector('textarea[data-command="update"]');
         const themedScrollbar = 'rgb(61, 80, 104) rgb(17, 25, 37)';
         if (getComputedStyle(input).scrollbarColor !== themedScrollbar || getComputedStyle(document.documentElement).scrollbarColor !== themedScrollbar) throw new Error('Native text/page scrollbars do not match the application palette');
-        Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(input, 'tool update --changed-flag');
+        const setCommand = (element, value) => {
+          Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value').set.call(element, value);
+          element.dispatchEvent(new Event('input', { bubbles: true }));
+        };
+        const versionCommand = document.querySelector('textarea[data-command="version"]').value;
+        setCommand(input, versionCommand);
+        await wait(() => document.querySelector('dialog[open] [role="alert"]')?.textContent.includes('actual updater'));
+        setCommand(input, 'tool update --changed-flag');
         input.dispatchEvent(new Event('input', { bubbles: true }));
         await new Promise(resolve => setTimeout(resolve, 60));
         document.querySelector('dialog[open] button[value="save"]').click();
@@ -129,7 +147,7 @@ app.on('web-contents-created', (_event, contents) => {
         const arabicLine = [...document.querySelectorAll('.readable-output>div')].find(line => line.textContent.includes('تأكيد إلغاء التثبيت؟'));
         if (!arabicLine || getComputedStyle(arabicLine).direction !== 'rtl') throw new Error('Arabic reading direction failed');
         if ((await window.rattib.settings()).language !== 'ar') throw new Error('UI language preference not saved');
-        return { englishUI: true, arabicUI: true, persistedPresence: true, editWithoutDeleting: true, launch: true, readableArabic: true, terminalNotReversed: true, instantLanguage: true, themedScrollbars: true };
+        return { englishUI: true, arabicUI: true, persistedPresence: true, editWithoutDeleting: true, launch: true, readableArabic: true, terminalNotReversed: true, instantLanguage: true, themedScrollbars: true, updaterConfigurationWarning: true, updateConfirmationPlan: true };
       })()`);
       if (!confirmations.some(options => options.message === 'Run this command?')) throw new Error('English confirmations were not used');
       if (process.env.RATTIB_SMOKE_SCREENSHOT) writeFileSync(process.env.RATTIB_SMOKE_SCREENSHOT, (await contents.capturePage()).toPNG());

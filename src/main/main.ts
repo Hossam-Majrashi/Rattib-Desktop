@@ -2,7 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, session } from 'electron';
 import { join, isAbsolute } from 'node:path';
 import { homedir } from 'node:os';
 import * as pty from 'node-pty';
-import { actions, type Action, type Platform, type TerminalEvent } from '../shared/model.ts';
+import { actions, commandIssue, type Action, type Platform, type TerminalEvent } from '../shared/model.ts';
 import { commandDisplay, t, type MessageKey } from '../shared/i18n.ts';
 import { shellCommand } from './shell';
 import { LocalStore } from './store';
@@ -59,20 +59,21 @@ function registerIPC() {
     if (!actions.includes(action as Action)) throw new Error('Invalid action.');
     const { tool, profile } = getTool(id);
     const requested = action as Action;
-    if (!profile.commands[requested].trim()) throw new Error(text('errorCommand'));
+    const issue = commandIssue(profile, requested);
+    if (issue) throw new Error(text(issue));
     const preflight = requested === 'install' || requested === 'update';
-    if (preflight && !profile.commands.version.trim()) throw new Error(text('versionRequired'));
     const confirm = async (a: Action, kind: Confirmation): Promise<boolean> => {
       if (confirming) throw new Error(text('errorBusy'));
       confirming = true;
       try {
         const prefix = kind === 'preflight' ? text('probeDetail') : kind === 'unverified-install' ? text('failedProbeDetail') : '';
-        const postcheck = a === 'install' || a === 'update' ? '\n\n' + text('mutationCheckHint') + '\n' + commandDisplay(profile.commands.version) : '';
+        const planned = kind === 'preflight' ? '\n\n' + text('plannedCommand') + '\n' + text(`action.${requested}`) + ':\n' + commandDisplay(profile.commands[requested]) : '';
+        const postcheck = kind === 'preflight' || a === 'install' || a === 'update' ? '\n\n' + text('mutationCheckHint') + '\n' + commandDisplay(profile.commands.version) : '';
         const answer = await dialog.showMessageBox(window, {
           type: a === 'uninstall' || kind === 'unverified-install' ? 'warning' : 'question',
           title: `${text('action.' + (kind === 'preflight' ? requested : a) as MessageKey)} — ${tool.name}`,
           message: text(kind === 'preflight' ? 'probeQuestion' : kind === 'unverified-install' ? 'failedProbeQuestion' : 'runQuestion'),
-          detail: (prefix ? prefix + '\n\n' : '') + commandDisplay(profile.commands[a]) + postcheck + '\n\n' + text('shellLabel') + ': ' + profile.shell + '\n' + text('commandRisk'),
+          detail: (prefix ? prefix + '\n\n' : '') + commandDisplay(profile.commands[a]) + planned + postcheck + '\n\n' + text('shellLabel') + ': ' + profile.shell + '\n' + text('commandRisk'),
           buttons: [text('cancel'), text(kind === 'preflight' ? 'probeButton' : kind === 'unverified-install' ? 'installAnyway' : 'runButton')],
           defaultId: 0, cancelId: 0, noLink: true
         });

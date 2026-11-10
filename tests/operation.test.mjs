@@ -12,7 +12,7 @@ async function setup(context, action, approved = true) {
   const directory = await mkdtemp(join(tmpdir(), 'rattib-operation-test-'));
   context.after(() => rm(directory, { recursive: true, force: true }));
   const store = new LocalStore(directory, 'linux'); await store.init();
-  const tool = { id: 'fixture', name: 'Fixture', profiles: { linux: { ...blankProfile(), commands: { ...blankProfile().commands, install: 'INSTALL', update: 'UPDATE', version: 'VERSION', launch: 'LAUNCH' } } } };
+  const tool = { id: 'fixture', name: 'Fixture', profiles: { linux: { ...blankProfile(), commands: { ...blankProfile().commands, install: 'INSTALL', update: 'UPDATE', version: 'VERSION', latest: 'LATEST', launch: 'LAUNCH' } } } };
   await store.saveTools([tool]);
   const events = [], children = [], confirmations = [];
   const operation = new ToolOperation({
@@ -51,6 +51,30 @@ test('Update checks presence before modifying, then reads and saves the new vers
   await s.complete('1.6.0'); assert.equal(s.store.state('fixture').installedVersion, '1.6.0');
   assert.equal(s.events.filter(e => e.type === 'exit').length, 1);
   assert.ok(s.events.filter(e => e.type === 'phase').every(e => e.id === s.operation.run.id));
+});
+test('latest checks the release source only, never the local version or updater', async context => {
+  const s = await setup(context, 'latest');
+  await s.operation.start(); await s.complete('1.6.0');
+  assert.deepEqual(s.children.map(c => c.command), ['LATEST']);
+  assert.equal(s.store.state('fixture').latestVersion, '1.6.0');
+  assert.equal(s.store.state('fixture').installedVersion, undefined);
+});
+for (const action of ['update', 'latest']) test(action + ' rejects a duplicated installed-version command before spawning', async context => {
+  const s = await setup(context, action);
+  s.tool.profiles.linux.commands[action] = '  VERSION  ';
+  await s.store.saveTools([s.tool]);
+  await assert.rejects(s.operation.start(), /installed-version command/);
+  assert.equal(s.children.length, 0);
+  assert.equal(s.confirmations.length, 0);
+});
+test('update terminal output distinguishes all three execution steps', async context => {
+  const s = await setup(context, 'update');
+  await s.operation.start(); await s.complete('1.5.0'); await s.complete('updated'); await s.complete('1.6.0');
+  const headers = s.events.filter(e => e.type === 'data' && e.data.includes('[Rattib]')).map(e => e.data);
+  assert.equal(headers.length, 3);
+  assert.match(headers[0], /Step 1\/3.*not the updater/);
+  assert.match(headers[1], /Run configured command.*Update/);
+  assert.match(headers[2], /Step 3\/3/);
 });
 test('terminal dimensions are retained across check/update/check phases', async context => {
   const s = await setup(context, 'update'); await s.operation.start(); s.operation.resize(132, 38);
