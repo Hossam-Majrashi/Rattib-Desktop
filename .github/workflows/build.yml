@@ -209,6 +209,8 @@ jobs:
     timeout-minutes: 45
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      RATTIB_SMOKE_REPORT_DIR: .smoke-artifacts
+      RATTIB_SMOKE_TEST_OCCLUSION: '1'
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -220,6 +222,14 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run test:smoke
+      - name: Upload smoke failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: smoke-failure-windows-${{ matrix.arch }}
+          path: .smoke-artifacts/
+          if-no-files-found: ignore
+          retention-days: 7
       - run: npx --no-install electron-builder --win nsis zip --${{ matrix.arch }} --publish never
       - name: Install WiX for native-architecture MSI
         run: dotnet tool install --tool-path .wix wix --version 6.0.2

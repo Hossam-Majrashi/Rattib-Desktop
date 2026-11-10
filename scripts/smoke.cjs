@@ -1,7 +1,10 @@
 // Isolated integration tests. All commands use our safe local fixture, never user tools.
-const { app, dialog } = require('electron');
-const { resolve } = require('node:path');
-const { writeFileSync } = require('node:fs');
+const { app, dialog, BrowserWindow } = require('electron');
+const { resolve, join } = require('node:path');
+const { writeFileSync, mkdirSync } = require('node:fs');
+// CI desktop sessions can leave the test window occluded, especially on Windows ARM.
+// Disable background scheduling only in this isolated test, never in the shipped app.
+app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
 const profile = process.env.RATTIB_SMOKE_PROFILE;
 if (!profile) throw new Error('Use npm run test:smoke for an isolated test profile.');
 app.setPath('userData', profile);
@@ -13,14 +16,38 @@ dialog.showMessageBox = async (...args) => {
   return { response: uncertain ? 0 : 1, checkboxChecked: false };
 };
 let finished = false;
-const timeout = setTimeout(() => finish(1, 'SMOKE_TIMEOUT'), 75000);
+let stage = 'boot';
+function progress(value) { stage = value; console.log('SMOKE_STAGE ' + value); }
+const timeout = setTimeout(() => finish(1, 'SMOKE_TIMEOUT at ' + stage), 75000);
 function finish(code, message) {
   if (finished) return;
-  finished = true; clearTimeout(timeout); console.log(message); app.exit(code);
+  finished = true; clearTimeout(timeout);
+  if (code !== 0) {
+    const report = { stage, platform: process.platform, arch: process.arch, message };
+    if (process.env.RATTIB_SMOKE_REPORT_DIR) {
+      try {
+        mkdirSync(process.env.RATTIB_SMOKE_REPORT_DIR, { recursive: true });
+        writeFileSync(join(process.env.RATTIB_SMOKE_REPORT_DIR, 'failure.json'), JSON.stringify(report, null, 2));
+      } catch (error) { console.error('Could not write smoke report:', String(error)); }
+    }
+    if (process.env.GITHUB_ACTIONS === 'true') {
+      const escaped = ('[' + stage + '] ' + message).replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+      console.error('::error title=Electron smoke test failed::' + escaped);
+    }
+  }
+  console.log(message); app.exit(code);
 }
 app.on('web-contents-created', (_event, contents) => {
+  contents.setBackgroundThrottling(false);
+  const focusWindow = () => {
+    const window = BrowserWindow.fromWebContents(contents);
+    if (window?.isMinimized()) window.restore();
+    window?.show(); window?.focus(); contents.focus();
+  };
   contents.once('did-finish-load', async () => {
     try {
+      focusWindow();
+      progress('backend');
       const fixture = resolve('tests/interactive-fixture.mjs');
       const backend = await contents.executeJavaScript(`(async () => {
         const wait = async predicate => {
@@ -89,8 +116,10 @@ app.on('web-contents-created', (_event, contents) => {
       })()`);
       const updateProbe = confirmations.find(options => options.title?.startsWith('تحديث —') && options.message === 'التحقق من وجود الأداة؟');
       if (!updateProbe?.detail.includes('--update-marker') || !updateProbe.detail.includes('--version')) throw new Error('Initial update confirmation does not show the updater and verification plan');
+      progress('reload');
       const loaded = new Promise(resolveLoaded => contents.once('did-finish-load', resolveLoaded));
       contents.reload(); await loaded;
+      progress('ui');
       const ui = await contents.executeJavaScript(`(async () => {
         const wait = async predicate => {
           for (let i = 0; i < 300; i++) { if (await predicate()) return; await new Promise(resolve => setTimeout(resolve, 40)); }
@@ -160,6 +189,8 @@ app.on('web-contents-created', (_event, contents) => {
       })()`);
       // Drive real Electron keyboard events through the original xterm textarea,
       // while only the connected Arabic display is visible.
+      progress('connected-launch');
+      focusWindow();
       await contents.executeJavaScript(`(async () => {
         const tools = await window.rattib.list();
         const info = await window.rattib.info();
@@ -175,26 +206,36 @@ app.on('web-contents-created', (_event, contents) => {
         throw new Error('Connected terminal timed out: ' + value);
       };
       await waitForText('ARROW_MENU');
+      progress('connected-display-switch');
+      if (process.env.RATTIB_SMOKE_TEST_OCCLUSION === '1') BrowserWindow.fromWebContents(contents)?.hide();
       await contents.executeJavaScript(`(async () => {
+        const wait = async predicate => {
+          for (let i = 0; i < 300; i++) { if (predicate()) return; await new Promise(resolve => setTimeout(resolve, 40)); }
+          throw new Error('Timed out switching terminal display');
+        };
         const terminal = document.querySelector('.xterm');
         if (!document.querySelector('.arabic-active') || getComputedStyle(document.querySelector('.xterm-screen')).opacity !== '0') throw new Error('Disconnected xterm glyphs still visible');
         if (!document.querySelector('.terminal-selected-row')?.textContent.includes('متابعة')) throw new Error('Menu selection highlight lost in connected display');
         document.querySelector('[data-ui="original-terminal"]').click();
-        await new Promise(requestAnimationFrame);
-        if (document.querySelector('.connected-output') || document.querySelector('.xterm') !== terminal) throw new Error('Original display switch recreated the terminal');
+        await wait(() => !document.querySelector('.connected-output'));
+        if (document.querySelector('.xterm') !== terminal) throw new Error('Original display switch recreated the terminal');
         document.querySelector('[data-ui="connected-terminal"]').click();
-        await new Promise(requestAnimationFrame);
-        if (!document.querySelector('.connected-output') || document.querySelector('.xterm') !== terminal) throw new Error('Connected display switch recreated the terminal');
+        await wait(() => Boolean(document.querySelector('.connected-output')));
+        if (document.querySelector('.xterm') !== terminal) throw new Error('Connected display switch recreated the terminal');
         if (!document.activeElement.classList.contains('xterm-helper-textarea')) throw new Error('Display switch lost keyboard focus');
       })()`);
       const key = keyCode => {
         contents.sendInputEvent({ type: 'keyDown', keyCode });
         contents.sendInputEvent({ type: 'keyUp', keyCode });
       };
+      progress('arabic-input');
+      focusWindow();
       for (const character of 'مرحبا') contents.sendInputEvent({ type: 'char', keyCode: character });
       await waitForText('ARABIC_INPUT_OK');
+      progress('arrow-input');
       key('Down'); key('Return');
       await waitForText('NUMERIC_MENU');
+      progress('numeric-input');
       contents.sendInputEvent({ type: 'char', keyCode: '2' });
       key('Return');
       await waitForText('INTERACTIVE_OK');
@@ -206,7 +247,7 @@ app.on('web-contents-created', (_event, contents) => {
       if (!confirmations.some(options => options.message === 'Run this command?')) throw new Error('English confirmations were not used');
       if (process.env.RATTIB_SMOKE_SCREENSHOT) writeFileSync(process.env.RATTIB_SMOKE_SCREENSHOT, (await contents.capturePage()).toPNG());
       finish(0, 'SMOKE_OK ' + JSON.stringify({ ...backend, ...ui }));
-    } catch (error) { finish(1, String(error)); }
+    } catch (error) { finish(1, error.stack ?? String(error)); }
   });
   contents.on('console-message', details => { if (details.level === 'error') console.error('Renderer:', details.message); });
   contents.on('render-process-gone', (_event, details) => finish(1, 'Renderer exited: ' + details.reason));
