@@ -1,6 +1,13 @@
 export const platforms = ['linux', 'darwin', 'win32'] as const;
 export type Platform = typeof platforms[number];
+export const toolActions = ['install', 'launch', 'version', 'update', 'uninstall'] as const;
+export type ToolAction = typeof toolActions[number];
+// Keep the old release-source command readable for existing saved profiles.
 export const actions = ['install', 'launch', 'version', 'latest', 'update', 'uninstall'] as const;
+export const commandExamples: Record<ToolAction, string> = {
+  install: 'npm install -g <package-name>', launch: 'strata', version: 'strata --version',
+  update: 'strata update', uninstall: 'strata uninstall'
+};
 export type Action = typeof actions[number];
 export const shells = ['auto', 'bash', 'zsh', 'powershell', 'cmd', 'wsl'] as const;
 export type Shell = typeof shells[number];

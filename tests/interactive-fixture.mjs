@@ -7,11 +7,16 @@ if (process.argv.includes('--launch')) { console.log('LAUNCH_OK\nتأكيد إل
 if (!process.stdin.isTTY || !process.stdout.isTTY) { console.error('NOT_A_TTY'); process.exit(2); }
 process.stdin.setRawMode(true);
 process.stdin.resume();
+if (process.argv.includes('--arabic')) process.stdout.write('تأكيد الاختيار — استخدم الأسهم ثم أدخل الرقم\r\n\x1b[7mمتابعة\x1b[0m\r\n');
 process.stdout.write('ARROW_MENU: use down arrow and Enter\r\n');
 let stage = 0;
 let buffer = '';
+let arabicInputChecked = false;
 process.stdin.on('data', data => {
   buffer += data.toString();
+  if (process.argv.includes('--arabic') && !arabicInputChecked && buffer.includes('مرحبا')) {
+    arabicInputChecked = true; process.stdout.write('ARABIC_INPUT_OK\r\n');
+  }
   if (buffer.includes('\x03')) process.exit(130);
   if (stage === 0 && buffer.includes('\x1b[B') && /[\r\n]/.test(buffer)) {
     stage = 1; buffer = ''; process.stdout.write('NUMERIC_MENU: Select option [1/2/3]: ');

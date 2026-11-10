@@ -1,4 +1,11 @@
-## Rattib Desktop 0.2.2 — experimental release
+## Rattib Desktop 0.2.3 — experimental release
+
+### Changed in 0.2.3
+- Render connected Arabic lines inside the live terminal instead of a separate read-only panel. xterm still handles PTY parsing and all keyboard, paste and IME input; input bytes are unchanged.
+- Follow the current viewport, scrolling and redraws, retain inverse-video selection at row level, and allow switching to the original display without restarting the process.
+- Remove Check for updates, its advanced field and comparison metadata from the UI. Preserve older saved release-source definitions internally for compatibility.
+- Add illustrative placeholders and Arabic/English explanations for every visible command field, including `strata update` and `strata --version`. Examples are never automatically saved or executed.
+- Add viewport/selection regression tests and a real Electron-keyboard smoke test for arrows, Enter and numeric input while the connected Arabic display is active.
 
 ### Changed in 0.2.2
 - Distinguish installed-version checks, release-source checks and actual updates with Arabic/English command guidance.
@@ -21,7 +28,7 @@ Manual tool inventory, per-platform commands, an interactive PTY terminal, expli
 - Arabic/English interface and native confirmations, with saved language preferences.
 - Launch commands and clearer editing without deleting a tool card; older definitions migrate with no command loss.
 - Persisted installation/version state and backend duplicate-install protection. Legacy manual-association records remain readable but are no longer accepted as verified presence.
-- Read-only Arabic output panel using browser bidi/shaping. The interactive terminal remains LTR and command bytes are not reversed.
+- Browser bidi/shaping for Arabic output; 0.2.3 moves it into the live terminal display. Command/input bytes are never reversed.
 - Standard-size Linux launcher icons, pre-launch icon-cache validation, and an explicit per-user shortcut option for packaged AppImage/portable Linux builds.
 
 ### Packaging fixes in 0.1.3
@@ -47,5 +54,5 @@ Manual tool inventory, per-platform commands, an interactive PTY terminal, expli
 - AppImage zsync files support external zsync downloads; automatic self-updating and AppImageUpdate discovery are not implemented.
 - No background device scans, automatic updates, encrypted secret storage, or terminal-session file logging. Existing-tool checks run only for user-added tools after explicit approval.
 - Presence is cached, not continuously monitored. Install/Update recheck it on demand. A successful launch is not proof of a verified version.
-- Arabic reading mode is read-only and may not preserve cursor-heavy TUI layouts. Use the original terminal for input.
+- Connected Arabic display preserves keyboard interaction but not every cell-positioned, mouse-driven or colored TUI detail. Use Original display for those interfaces.
 - Compare SHA256SUMS before using downloaded assets. Checksums alone are not a publisher signature.

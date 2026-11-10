@@ -7,10 +7,20 @@
 .checkbox-label input{width:auto;flex:0 0 auto;margin-top:7px;accent-color:#63dfb2}
 .association-option{padding:10px 14px;border:1px solid #34554e;border-radius:9px;margin:14px 0}
 .presence{font-size:13px;color:#a7b8cd}.presence.present{color:#83e8c0}
-.arabic-preview{margin-top:16px;border-top:1px solid #34455b;padding-top:12px}
-.arabic-preview h3{font-size:16px}
-.readable-output{max-height:290px;overflow:auto;background:#090d14;border-radius:8px;padding:12px;font-family:system-ui,"Noto Sans Arabic",Tahoma,sans-serif;line-height:1.8}
-.readable-output>div{white-space:pre-wrap;overflow-wrap:anywhere;unicode-bidi:plaintext;text-align:start;min-height:1.8em}
+.command-help{display:block;margin-top:6px;line-height:1.7}
+.command-input::placeholder{color:#8190a5;opacity:1}
+.terminal-display-tools{margin-top:12px}
+.terminal-display-tools button{font-size:13px}
+.terminal-display-tools button[aria-pressed="true"]{border-color:#63dfb2;color:#83e8c0}
+.terminal-shell{position:relative;margin-top:14px}
+.terminal-shell .terminal{margin-top:0}
+.terminal-shell:focus-within{outline:1px solid #63dfb2;border-radius:9px}
+/* Hide only the original pixels. Keep xterm's textarea, input and scroll handling alive. */
+.arabic-active .xterm-screen{opacity:0}
+.connected-output{position:absolute;inset:10px 24px 10px 10px;overflow:hidden;pointer-events:none;color:#d8e2ef;font-family:system-ui,"Noto Sans Arabic",Tahoma,sans-serif;font-size:14px;letter-spacing:normal;font-variant-ligatures:normal}
+.connected-output>div{white-space:pre;unicode-bidi:plaintext;text-align:start;min-height:1lh;height:1lh}
+.terminal-shell:focus-within .terminal-cursor-row{background:#63dfb20c;box-shadow:inset 2px 0 #62dfb1}
+.connected-output .terminal-selected-row{color:#090d14;background:#d8e2ef}
 bdi{unicode-bidi:isolate}
 :root{--scroll-track:#111925;--scroll-thumb:#3d5068;--scroll-hover:#58748f}
 *{scrollbar-width:thin;scrollbar-color:var(--scroll-thumb) var(--scroll-track)}

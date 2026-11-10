@@ -30,7 +30,7 @@ A local desktop manager for CLI tools you add manually, with an interactive term
 
 - إضافة اسم الأداة وأوامرها يدويًا، وتعديل تعريفها أو حذفه.
 - إعداد مستقل لكل من Linux وmacOS وWindows، مع اختيار shell المناسب.
-- أوامر منفصلة للتشغيل، التثبيت، قراءة الإصدار، جلب أحدث إصدار، التحديث، والإزالة.
+- أوامر منفصلة للتشغيل، التثبيت، قراءة الإصدار المثبت، التحديث، والإزالة. أُزيل زر «تحقق من التحديث» وحقله وحالة المقارنة من الواجهة.
 - التحقق من وجود الأداة بأمر الإصدار عند النقر على التثبيت أو التحقق من الإصدار أو التحديث، دون خيار ربط يدوي.
 - حفظ حالة الأداة والإصدار بين مرات فتح التطبيق، ومنع تشغيل المثبّت للأداة المعروفة كموجودة.
 - طرفية PTY حقيقية عبر `node-pty` و`xterm.js`: الأسهم، Enter، Space، النصوص، والأسئلة الرقمية تصل إلى البرنامج نفسه.
@@ -40,13 +40,13 @@ A local desktop manager for CLI tools you add manually, with an interactive term
 - لا حفظ لسجل الطرفية على القرص بواسطة Rattib. قد تحفظ الأداة نفسها سجلاتها.
 - واجهة عربية وإنجليزية؛ تغيير اللغة وحفظها فور اختيارها من الإعدادات دون زر تأكيد.
 - أشرطة تمرير للنصوص والنوافذ والطرفية بألوان التطبيق الداكنة.
-- أوامر معزولة باتجاه LTR وعرض عربي مقروء للقراءة فقط عند ظهور نص عربي في الطرفية.
+- أوامر معزولة باتجاه LTR وعرض عربي متصل داخل الطرفية، مع استمرار إدخال الأسهم والأرقام والنصوص إلى العملية نفسها.
 
 ### الاستخدام
 
 1. اضغط **إضافة أداة** وأدخل اسمها.
 2. اختر النظام وبيئة التشغيل، ثم أدخل الأوامر المطلوبة فقط.
-3. اترك أي أمر غير مطلوب فارغًا لتعطيل زره. يحتاج التثبيت والتحديث أيضًا أمر الإصدار للتحقق من وجود الأداة.
+3. في كل خانة مثال خافت وشرح: `strata` للتشغيل، `strata --version` للإصدار، `strata update` للتحديث، `strata uninstall` للإزالة، و`npm install -g <package-name>` للتثبيت. هذه أمثلة فقط؛ استخدم الأوامر التي تدعمها أداتك وطريقة تثبيتها، ولا تُنفّذ الأمثلة أو تُحفظ تلقائيًا. ترك الخانة فارغة يعطّل زرها. يحتاج التثبيت والتحديث أيضًا أمر الإصدار للتحقق من وجود الأداة.
 4. عند التشغيل راجع نافذة التأكيد، ثم أجب عن الأسئلة داخل الطرفية بنفسك.
 
 مثال تعريفي يطابق الفكرة المطلوبة، **وليس توثيقًا لصحة جميع أوامر Pi**:
@@ -80,7 +80,7 @@ A local desktop manager for CLI tools you add manually, with an interactive term
 
 من **الإعدادات → لغة الواجهة** اختر **English** أو **العربية**. يتغير اتجاه الواجهة ورسائل التأكيد ويُحفظ الاختيار فورًا دون زر تأكيد؛ كذلك يُحفظ خيار العرض العربي مباشرة. لا تتغير لغة الأداة الخارجية تلقائيًا.
 
-تبقى الطرفية التفاعلية LTR حتى لا تُفسد مواضع المؤشر والاختيارات. أوامر مثل `pi uninstall` معزولة بصريًا دون تغيير البايتات المنفذة. عند ظهور العربية، يعرض خيار **عرض عربي مقروء** أسطر الطرفية في HTML يدعم تشكيل العربية واتجاهها؛ هذا عرض للقراءة فقط، وليس بديل إدخال أو تحويلًا عامًا لواجهات TUI. قد يختلف ترتيب القوائم المعقدة فيه.
+عند ظهور العربية، يستخدم **العرض العربي المتصل** أسطرًا كاملة في مساحة الطرفية لضم الحروف بواسطة المتصفح بدل رسم كل حرف في خلية منفصلة. انقر داخل الطرفية واكتب أو استخدم الأسهم وEnter؛ تبقى معالجة الإدخال واللصق وIME والفحص عبر xterm وPTY كما هي، دون قلب البايتات أو إعادة تشكيل الأوامر. يتابع العرض شاشة الطرفية الحالية والتمرير وتغييرات القوائم بدل تكديس سجل قديم. يمكن الرجوع إلى **العرض الأصلي** دون إعادة تشغيل العملية؛ استخدمه للواجهات المعتمدة على الماوس أو تخطيط الخلايا الدقيق أو الألوان التي لا يحافظ عليها العرض العربي بالكامل. يمكن إيقاف التبديل العربي التلقائي من الإعدادات.
 
 #### أيقونة التطبيق على Linux
 
@@ -91,12 +91,10 @@ A local desktop manager for CLI tools you add manually, with an interactive term
 #### الإصدار والتحديث
 
 - `pi -v` يقرأ الإصدار المحلي، ولا يبحث عن تحديث ولا يثبّته. لا تفترض أن كل نسخة من Pi تدعم `pi update`؛ استخدم أمر التحديث الموثق لطريقة تثبيتك.
-- التحقق من الإصدار يشغّل أمر الإصدار المحلي فقط. التحقق من التحديث يشغّل أمر مصدر الإصدارات فقط. التحديث يفحص الإصدار، ثم يشغّل المحدّث بعد موافقة مستقلة، ثم يفحص الإصدار مجددًا.
-- تعرض نافذة التحديث الأولى أمر المحدّث الفعلي والفحص اللاحق، وتظهر مراحل التنفيذ في الطرفية. إذا كان أمر التحديث أو مصدر الإصدارات مطابقًا لأمر الإصدار المحلي، يُعطّل الزر مع توضيح السبب؛ أصلح الحقل في **تعديل الأوامر**. لا تُستبدل أوامرك تلقائيًا.
-- ضمن الخيارات المتقدمة، أدخل أمرًا موثوقًا يعرض آخر إصدار متاح من مصدر تختاره. هذا الأمر مستقل عن أمر التحديث، ولا ينشئ التطبيق مصدرًا من تلقاء نفسه.
-- لا يستطيع Rattib ضمان أن الأمر الذي سميته «تحقق من تحديث» للقراءة فقط؛ أنت المسؤول عن محتواه.
+- التحقق من الإصدار يشغّل أمر الإصدار المحلي فقط. التحديث يفحص الإصدار، ثم يشغّل المحدّث بعد موافقة مستقلة، ثم يفحص الإصدار مجددًا.
+- أُزيل خيار «تحقق من التحديث» من البطاقات والمحرر، مع بيانات المقارنة. تُحفظ تعريفات مصدر الإصدار القديمة داخليًا للتوافق، دون زر لتشغيلها في الواجهة.
+- تعرض نافذة التحديث الأولى أمر المحدّث الفعلي والفحص اللاحق، وتظهر مراحل التنفيذ في الطرفية. إذا كان أمر التحديث مطابقًا لأمر الإصدار المحلي، يُعطّل الزر مع توضيح السبب؛ أصلح الحقل في **تعديل الأوامر**. لا تُستبدل أوامرك تلقائيًا.
 - يُستخرج رقم ثلاثي واضح مثل `1.5.0` بعد خروج ناجح فقط. إذا وُجدت أرقام إصدارات متعددة مختلفة لا يخمّن التطبيق.
-- المقارنة التلقائية للإصدارات المستقرة الثلاثية فقط؛ إصدارات prerelease المختلفة تحتاج مراجعة يدوية.
 - معلومات الإصدار وحالة الوجود محفوظة محليًا وليست مراقبة مستمرة. أعد الفحص إذا حذفت الأداة أو غيّرتها خارج Rattib. التثبيت والتحديث والإزالة يبطلون تحقق الإصدار المحلي السابق؛ يعاد الفحص بعد نجاح التثبيت أو التحديث، ويمكن طلبه يدويًا بعد الإزالة.
 - نجاح أمر لا يثبت اكتمال التثبيت. اضغط قراءة الإصدار للتحقق.
 
@@ -137,11 +135,11 @@ npm run package:dir   # تطبيق غير مغلف للنظام الحالي
 المستودع: <https://github.com/Hossam-Majrashi/Rattib-Desktop>
 
 - **Validate** يعمل عند الدفع إلى `main` وطلبات الدمج.
-- **Build desktop packages** يعمل عند دفع tag مثل `v0.2.2` أو يدويًا من Actions.
+- **Build desktop packages** يعمل عند دفع tag مثل `v0.2.3` أو يدويًا من Actions.
 - يجب أن يطابق tag الإصدار في `package.json`.
 - تُبنى الحزم على runners أصلية مناسبة لكل معمارية، وتُرفع كمرفقات Actions لمدة 14 يومًا.
 - Arch له مهمتا بناء مستقلتان باسم **Arch Linux (x64)** و**Arch Linux (arm64)**، ومرفقاتهما **packages-arch-x64** و**packages-arch-arm64**. افتح تشغيل البناء ثم قسم **Artifacts** للتنزيل؛ فشل منصة أخرى لا يمنع رفع حزمة Arch الناجحة.
-- ملفات Arch المتوقعة للإصدار 0.2.2: `Rattib-Desktop-0.2.2-linux-x86_64.pkg.tar.zst` و`Rattib-Desktop-0.2.2-linux-aarch64.pkg.tar.zst`. معمارية aarch64 موجهة لبيئات Arch Linux ARM، لا مستودعات Arch الرسمية التي تدعم x86_64.
+- ملفات Arch المتوقعة للإصدار 0.2.3: `Rattib-Desktop-0.2.3-linux-x86_64.pkg.tar.zst` و`Rattib-Desktop-0.2.3-linux-aarch64.pkg.tar.zst`. معمارية aarch64 موجهة لبيئات Arch Linux ARM، لا مستودعات Arch الرسمية التي تدعم x86_64.
 - عند tag، لا تُنشأ مسودة Release إلا بعد نجاح كل مصفوفات البناء والتحقق من وجود **23 ملف حزمة**. تُضاف `SHA256SUMS`؛ لا تُنشر المسودة للعامة تلقائيًا.
 - التشغيل اليدوي يبني المرفقات فقط ولا ينشئ إصدارًا.
 - توافر runners وحصة Actions يعتمد على إعدادات المستودع وخطة GitHub؛ ليست كل الاستخدامات مجانية بالضرورة.
@@ -151,7 +149,7 @@ npm run package:dir   # تطبيق غير مغلف للنظام الحالي
 بعد تنزيل مرفق Arch وفك ضغط ZIP، استخدم حزمة **`.pkg.tar.zst`**:
 
 ```sh
-sudo pacman -U ./Rattib-Desktop-0.2.2-linux-x86_64.pkg.tar.zst
+sudo pacman -U ./Rattib-Desktop-0.2.3-linux-x86_64.pkg.tar.zst
 ```
 
 **ملف `.tar.gz` أرشيف محمول، وليس حزمة pacman.** لا تغيّر امتداده ولا تمرّره إلى `pacman -U`.
@@ -169,12 +167,12 @@ sudo pacman -U ./Rattib-Desktop-0.2.2-linux-x86_64.pkg.tar.zst
 نمط الاسم:
 
 ```text
-Rattib-Desktop-0.2.2-linux-x86_64.AppImage
-Rattib-Desktop-0.2.2-linux-aarch64.pkg.tar.zst
-Rattib-Desktop-0.2.2-macos-universal.dmg
-Rattib-Desktop-0.2.2-windows-arm64.msi
-Rattib-Desktop-0.2.2-windows-x64-setup.exe
-Rattib-Desktop-0.2.2-windows-x64-portable.zip
+Rattib-Desktop-0.2.3-linux-x86_64.AppImage
+Rattib-Desktop-0.2.3-linux-aarch64.pkg.tar.zst
+Rattib-Desktop-0.2.3-macos-universal.dmg
+Rattib-Desktop-0.2.3-windows-arm64.msi
+Rattib-Desktop-0.2.3-windows-x64-setup.exe
+Rattib-Desktop-0.2.3-windows-x64-portable.zip
 ```
 
 #### قيود مؤثرة
@@ -224,7 +222,7 @@ MIT — راجع [LICENSE](LICENSE).
 
 - Add tool names and commands manually; edit their commands or delete their cards later.
 - Independent Linux, macOS and Windows profiles with an explicit execution shell, including WSL on Windows.
-- Separate launch, install, installed-version, latest-version, update and uninstall commands.
+- Separate launch, install, installed-version, update and uninstall commands. The Check for updates button, field and comparison status have been removed from the UI.
 - Detect an existing installation using your version command when you click Install, Check installed version or Update. No manual “link as existing” option.
 - Save installation state and versions locally between sessions; do not reinstall a tool that a fresh check detects.
 - A real interactive PTY using `node-pty` and `xterm.js`: arrow keys, Enter, Space and numeric answers reach the program itself.
@@ -234,13 +232,13 @@ MIT — راجع [LICENSE](LICENSE).
 - Rattib does not write terminal-session logs to disk. External tools may keep their own logs.
 - Arabic and English interfaces, with language changes applied and saved immediately.
 - Dark, app-themed page, dialog, text-field and terminal scrollbars.
-- LTR command display and an optional read-only Arabic output panel.
+- LTR command display and connected Arabic rendering inside the live terminal, with keyboard input still reaching the same PTY.
 
 ### Usage
 
 1. Click **Add tool** and enter its name.
 2. Select the platform and shell, then enter only the commands you need.
-3. Empty fields disable their buttons. Install and Update also need an installed-version command to check whether the tool exists.
+3. Every command field has a placeholder and explanation: `strata`, `strata --version`, `strata update`, `strata uninstall`, and `npm install -g <package-name>`. These are examples only; use commands supported by your tool and installation method. Examples are never saved or run automatically. Empty fields disable their buttons. Install and Update also need an installed-version command to check whether the tool exists.
 4. Review the confirmation before execution and answer the external program’s prompts yourself in the terminal.
 
 An illustrative definition, **not a guarantee that these are the correct commands for every Pi installation**:
@@ -274,7 +272,7 @@ Check the tool’s own documentation before saving update or uninstall commands.
 
 Choose **Settings → Interface language → English** or **العربية**. The interface direction and confirmations change immediately, and the preference is saved without a confirmation button. The Arabic-preview setting also saves immediately. These settings do not change the language of external tools.
 
-The interactive terminal stays LTR to preserve cursor positions and menu interaction. Commands such as `pi uninstall` are visually isolated without changing the bytes executed. When Arabic appears, the optional **Readable Arabic output** panel uses browser shaping and bidirectional text rendering. It is read-only, not a replacement for terminal input or a general-purpose TUI renderer; cursor-heavy layouts may look different there.
+When Arabic appears, **Connected Arabic display** renders complete lines inside the terminal so the browser joins letters rather than drawing disconnected grid cells. Click the terminal and type or use arrows and Enter; xterm still handles PTY parsing, keyboard, paste and IME without reshaping or reversing input bytes. The display follows the current viewport, scrolling and screen redraws rather than appending a stale transcript. Switch to **Original display** without restarting the process for mouse-driven, cell-positioned or color-heavy interfaces; the Arabic display does not preserve every grid/color detail. Automatic Arabic display can be disabled in Settings.
 
 ### Linux application icons
 
@@ -285,12 +283,10 @@ For AppImage and portable Linux builds, use **Settings → Add application-menu 
 ### Versions and updates
 
 - A local command such as `pi -v` reports the installed version; it neither discovers nor installs updates. Do not assume every Pi distribution supports `pi update`; use the updater documented for your installation method.
-- Check installed version runs only the local version command. Check for updates runs only the release-source command. Update checks locally, runs the actual updater after separate approval, then checks locally again.
-- The initial update confirmation shows the actual updater and post-check; terminal output labels each execution phase. Update and Check for updates are disabled with an explanation if configured with the same command as the local version check. Fix the field in **Edit commands**; saved commands are never silently replaced.
-- In advanced settings, provide a trusted command that prints the latest version from a source you choose. Rattib does not invent a source or run the updater merely to check for releases.
-- Rattib cannot guarantee that a command named “Check for updates” is read-only. You are responsible for its contents.
+- Check installed version runs only the local version command. Update checks locally, runs the actual updater after separate approval, then checks locally again.
+- Check for updates and comparison metadata have been removed from cards and the editor. Old release-source definitions remain stored internally for compatibility, without a UI action to execute them.
+- The initial update confirmation shows the actual updater and post-check; terminal output labels each execution phase. Update is disabled with an explanation if configured with the same command as the local version check. Fix the field in **Edit commands**; saved commands are never silently replaced.
 - Version extraction requires a successful exit and one unambiguous three-part version, such as `1.5.0`. Rattib does not guess between different version numbers in logs.
-- Automatic ordering is limited to stable three-part versions. Different prerelease versions require manual review.
 - Saved state is not continuous monitoring. Recheck if you change or remove a tool outside Rattib. Install, Update and Uninstall invalidate previous local verification; successful installation and update are followed by another check.
 - A successful modifying command alone is not proof that installation completed correctly.
 
@@ -331,7 +327,7 @@ Smoke tests use a safe local fixture, not Pi or Hermes installers. They cover TT
 Repository: <https://github.com/Hossam-Majrashi/Rattib-Desktop>
 
 - **Validate** runs for pushes to `main` and pull requests.
-- **Build desktop packages** runs for version tags such as `v0.2.2` or manually from Actions. The tag must match `package.json`.
+- **Build desktop packages** runs for version tags such as `v0.2.3` or manually from Actions. The tag must match `package.json`.
 - Builds use native runners for their target architectures. Actions artifacts have **14-day retention** and may require GitHub sign-in.
 - Arch has independent **Arch Linux (x64)** and **Arch Linux (arm64)** jobs and `packages-arch-x64` / `packages-arch-arm64` artifacts. A different platform’s failure does not hide an uploaded Arch package.
 - Tag builds create a **draft** release only after all matrices pass and all **23 expected package files** are verified. `SHA256SUMS` is added. Drafts are not published publicly automatically.
@@ -346,7 +342,7 @@ Repository: <https://github.com/Hossam-Majrashi/Rattib-Desktop>
 For Arch x86_64, download and extract the ZIP artifact, then install the **`.pkg.tar.zst`** package:
 
 ```sh
-sudo pacman -U ./Rattib-Desktop-0.2.2-linux-x86_64.pkg.tar.zst
+sudo pacman -U ./Rattib-Desktop-0.2.3-linux-x86_64.pkg.tar.zst
 ```
 
 **The `.tar.gz` portable archive is not a pacman package.** Do not rename it or pass it to `pacman -U`. The aarch64 package targets Arch Linux ARM, not official Arch’s x86_64 repositories.

@@ -32,7 +32,7 @@ app.on('web-contents-created', (_event, contents) => {
         if ((await window.rattib.list()).length) throw new Error('Inventory was not empty');
         const info = await window.rattib.info();
         const base = 'node ' + JSON.stringify(${JSON.stringify(fixture)});
-        const commands = { install: base + ' --install-marker', version: base + ' --version', latest: '', update: base + ' --update-marker', uninstall: '' };
+        const commands = { install: base + ' --install-marker', version: base + ' --version', latest: base + ' --version', update: base + ' --update-marker', uninstall: '' };
         const legacy = { id: 'safe-fixture', name: 'Safe fixture', profiles: { [info.platform]: { shell: 'auto', commands } } };
         await window.rattib.save([legacy]);
         if ((await window.rattib.list())[0].profiles[info.platform].commands.launch !== '') throw new Error('Legacy migration failed');
@@ -101,9 +101,16 @@ app.on('web-contents-created', (_event, contents) => {
         const card = id => document.querySelector('[data-tool-id="' + id + '"]');
         if (card('safe-fixture').querySelector('[data-action="install"]').disabled) throw new Error('Fresh detection button was disabled for a cached installation');
         if (document.body.textContent.includes('Link as existing')) throw new Error('Manual association button still visible');
+        if (document.querySelector('[data-action="latest"]') || document.body.textContent.includes('Latest from source')) throw new Error('Removed update-check UI is still visible');
         card('safe-fixture').querySelector('[data-ui="edit"]').click();
         await wait(() => document.querySelector('dialog[open] textarea[data-command="update"]'));
         if (document.querySelector('dialog[open] input[type="checkbox"]')) throw new Error('Manual association option still in tool editor');
+        if (document.querySelector('textarea[data-command="latest"]')) throw new Error('Release-source editor still visible');
+        const examples = { install: 'npm install -g <package-name>', launch: 'strata', version: 'strata --version', update: 'strata update', uninstall: 'strata uninstall' };
+        for (const [action, example] of Object.entries(examples)) {
+          const field = document.querySelector('textarea[data-command="' + action + '"]');
+          if (field?.placeholder !== example || !document.getElementById(field.getAttribute('aria-describedby'))?.textContent.trim()) throw new Error('Missing example or explanation for ' + action);
+        }
         const input = document.querySelector('textarea[data-command="update"]');
         const themedScrollbar = 'rgb(61, 80, 104) rgb(17, 25, 37)';
         if (getComputedStyle(input).scrollbarColor !== themedScrollbar || getComputedStyle(document.documentElement).scrollbarColor !== themedScrollbar) throw new Error('Native text/page scrollbars do not match the application palette');
@@ -121,8 +128,10 @@ app.on('web-contents-created', (_event, contents) => {
         await wait(async () => (await window.rattib.list()).find(tool => tool.id === 'safe-fixture').profiles[(await window.rattib.info()).platform].commands.update === 'tool update --changed-flag');
         await wait(() => !document.querySelector('dialog[open]'));
         if ((await window.rattib.presence())['safe-fixture'].installedVersion !== '1.5.0') throw new Error('Editing update command forgot installed version');
+        const savedTool = (await window.rattib.list()).find(tool => tool.id === 'safe-fixture');
+        if (savedTool.profiles[(await window.rattib.info()).platform].commands.latest !== versionCommand) throw new Error('Editing removed a legacy source command');
         card('existing-launch').querySelector('[data-action="launch"]').click();
-        await wait(() => document.querySelector('.readable-output')?.textContent.includes('تأكيد إلغاء التثبيت؟ pi uninstall'));
+        await wait(() => document.querySelector('.connected-output')?.textContent.includes('تأكيد إلغاء التثبيت؟ pi uninstall'));
         await wait(async () => Boolean((await window.rattib.presence())['existing-launch'].launchedAt));
         if ((await window.rattib.presence())['existing-launch'].status !== 'unknown') throw new Error('Launching falsely marked an unverified tool installed');
         const preview = document.querySelector('.command-preview');
@@ -144,11 +153,56 @@ app.on('web-contents-created', (_event, contents) => {
         await changeLanguage('ar');
         if (document.documentElement.dir !== 'rtl') throw new Error('Arabic direction not applied');
         if (document.querySelector('.xterm') !== terminal || getComputedStyle(document.querySelector('.terminal')).direction !== 'ltr') throw new Error('Language change recreated or reversed PTY terminal');
-        const arabicLine = [...document.querySelectorAll('.readable-output>div')].find(line => line.textContent.includes('تأكيد إلغاء التثبيت؟'));
+        const arabicLine = [...document.querySelectorAll('.connected-output>div')].find(line => line.textContent.includes('تأكيد إلغاء التثبيت؟'));
         if (!arabicLine || getComputedStyle(arabicLine).direction !== 'rtl') throw new Error('Arabic reading direction failed');
         if ((await window.rattib.settings()).language !== 'ar') throw new Error('UI language preference not saved');
         return { englishUI: true, arabicUI: true, persistedPresence: true, editWithoutDeleting: true, launch: true, readableArabic: true, terminalNotReversed: true, instantLanguage: true, themedScrollbars: true, updaterConfigurationWarning: true, updateConfirmationPlan: true };
       })()`);
+      // Drive real Electron keyboard events through the original xterm textarea,
+      // while only the connected Arabic display is visible.
+      await contents.executeJavaScript(`(async () => {
+        const tools = await window.rattib.list();
+        const info = await window.rattib.info();
+        tools.find(tool => tool.id === 'existing-launch').profiles[info.platform].commands.launch = 'node ' + JSON.stringify(${JSON.stringify(fixture)}) + ' --arabic';
+        await window.rattib.save(tools);
+        document.querySelector('[data-tool-id="existing-launch"] [data-action="launch"]').click();
+      })()`);
+      const waitForText = async value => {
+        for (let i = 0; i < 300; i++) {
+          if (await contents.executeJavaScript(`document.querySelector('.connected-output')?.textContent.includes(${JSON.stringify(value)}) ?? false`)) return;
+          await new Promise(resolve => setTimeout(resolve, 40));
+        }
+        throw new Error('Connected terminal timed out: ' + value);
+      };
+      await waitForText('ARROW_MENU');
+      await contents.executeJavaScript(`(async () => {
+        const terminal = document.querySelector('.xterm');
+        if (!document.querySelector('.arabic-active') || getComputedStyle(document.querySelector('.xterm-screen')).opacity !== '0') throw new Error('Disconnected xterm glyphs still visible');
+        if (!document.querySelector('.terminal-selected-row')?.textContent.includes('متابعة')) throw new Error('Menu selection highlight lost in connected display');
+        document.querySelector('[data-ui="original-terminal"]').click();
+        await new Promise(requestAnimationFrame);
+        if (document.querySelector('.connected-output') || document.querySelector('.xterm') !== terminal) throw new Error('Original display switch recreated the terminal');
+        document.querySelector('[data-ui="connected-terminal"]').click();
+        await new Promise(requestAnimationFrame);
+        if (!document.querySelector('.connected-output') || document.querySelector('.xterm') !== terminal) throw new Error('Connected display switch recreated the terminal');
+        if (!document.activeElement.classList.contains('xterm-helper-textarea')) throw new Error('Display switch lost keyboard focus');
+      })()`);
+      const key = keyCode => {
+        contents.sendInputEvent({ type: 'keyDown', keyCode });
+        contents.sendInputEvent({ type: 'keyUp', keyCode });
+      };
+      for (const character of 'مرحبا') contents.sendInputEvent({ type: 'char', keyCode: character });
+      await waitForText('ARABIC_INPUT_OK');
+      key('Down'); key('Return');
+      await waitForText('NUMERIC_MENU');
+      contents.sendInputEvent({ type: 'char', keyCode: '2' });
+      key('Return');
+      await waitForText('INTERACTIVE_OK');
+      ui.connectedArabicKeyboard = true;
+      ui.unchangedArabicInput = true;
+      ui.connectedMenuSelection = true;
+      ui.commandPlaceholders = true;
+      ui.noUpdateCheckButton = true;
       if (!confirmations.some(options => options.message === 'Run this command?')) throw new Error('English confirmations were not used');
       if (process.env.RATTIB_SMOKE_SCREENSHOT) writeFileSync(process.env.RATTIB_SMOKE_SCREENSHOT, (await contents.capturePage()).toPNG());
       finish(0, 'SMOKE_OK ' + JSON.stringify({ ...backend, ...ui }));

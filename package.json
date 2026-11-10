@@ -2,7 +2,7 @@
   "name": "rattib-desktop",
   "productName": "Rattib Desktop",
   "desktopName": "io.github.HossamMajrashi.RattibDesktop.desktop",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "A local, manual-first desktop manager for interactive CLI tools.",
   "author": "Hossam Majrashi",
   "license": "MIT",

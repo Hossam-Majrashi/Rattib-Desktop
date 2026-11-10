@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState, type FormEvent } from 'react';
-import { actions, blankProfile, commandIssue, compareVersions, defaultSettings, isPresent, type Action, type AppInfo, type Language, type Platform, type Presence, type Run, type Settings, type Shell, type Tool } from '../shared/model';
+import { toolActions, commandExamples, blankProfile, commandIssue, defaultSettings, isPresent, type Action, type AppInfo, type Language, type Platform, type Presence, type Run, type Settings, type Shell, type Tool } from '../shared/model';
 import { t, type MessageKey } from '../shared/i18n';
 import { exitCode, recordEvent, records } from './terminal-bus';
 const TerminalPane = lazy(() => import('./TerminalPane').then(module => ({ default: module.TerminalPane })));
@@ -43,16 +43,11 @@ function Editor({ tool, platform, language, onSave, onCancel }: {
         </select></label>
       </div>
       <p className="muted">{tr('optionalCommands')}</p>
-      {actions.filter(a => a !== 'latest').map(a => <label key={a}>{tr(`action.${a}`)}
-        <textarea className="command-input" data-command={a} dir="ltr" rows={2} maxLength={16384} spellCheck={false} value={profile.commands[a]} onChange={e => setCommand(a, e.target.value)} placeholder={a === 'version' ? 'tool --version' : a === 'launch' ? 'tool' : ''} />
-        {a === 'launch' && <span className="muted small">{tr('launchHint')}</span>}
-        {a === 'version' && <span className="muted small">{tr('versionHint')}</span>}
-        {a === 'update' && <><span className="muted small">{tr('updateHint')}</span>{commandIssue(profile, 'update') === 'updateMatchesVersion' && <span className="warning" role="alert">{tr('updateMatchesVersion')}</span>}</>}
+      {toolActions.map(a => <label key={a}>{tr(`action.${a}`)}
+        <textarea className="command-input" data-command={a} dir="ltr" rows={2} maxLength={16384} spellCheck={false} value={profile.commands[a]} onChange={e => setCommand(a, e.target.value)} placeholder={commandExamples[a]} aria-describedby={`command-help-${a}`} />
+        <span className="muted small command-help" id={`command-help-${a}`}>{tr(`${a}Hint`)}</span>
+        {a === 'update' && commandIssue(profile, 'update') === 'updateMatchesVersion' && <span className="warning" role="alert">{tr('updateMatchesVersion')}</span>}
       </label>)}
-      <details><summary>{tr('latestAdvanced')}</summary><p className="muted">{tr('latestHint')}</p>
-        <textarea className="command-input" data-command="latest" aria-label={tr('action.latest')} dir="ltr" rows={2} maxLength={16384} value={profile.commands.latest} onChange={e => setCommand('latest', e.target.value)} />
-        {commandIssue(profile, 'latest') === 'latestMatchesVersion' && <p className="warning" role="alert">{tr('latestMatchesVersion')}</p>}
-      </details>
       <p className="warning">{tr('noSecrets')}</p>
       {error && <p role="alert" className="error" dir="auto">{error}</p>}
       <div className="row end wrap">
@@ -159,7 +154,7 @@ export function App() {
         const profile = info && tool.profiles[info.platform];
         const state = presence[tool.id] ?? { status: 'unknown' };
         const present = isPresent(state);
-        const issues = (['update', 'latest'] as const).flatMap(action => {
+        const issues = (['update'] as const).flatMap(action => {
           const issue = profile?.commands[action].trim() && commandIssue(profile, action);
           return issue ? [issue] : [];
         });
@@ -168,13 +163,11 @@ export function App() {
           <p className={'presence ' + (present ? 'present' : '')}>{tr(`presence.${state.status}`)}</p>
           <dl>
             <div><dt>{tr('installedVersion')}</dt><dd><bdi dir="ltr">{state.installedVersion ?? tr('notRead')}</bdi></dd></div>
-            <div><dt>{tr('latestVersion')}</dt><dd><bdi dir="ltr">{state.latestVersion ?? tr('notChecked')}</bdi></dd></div>
-            <div><dt>{tr('updateState')}</dt><dd>{profile?.commands.latest.trim() ? tr(`update.${compareVersions(state.installedVersion, state.latestVersion)}`) : tr('latestNotConfigured')}</dd></div>
             {state.checkedAt && <div><dt>{tr('checkedAt')}</dt><dd>{date(state.checkedAt)}</dd></div>}
             {state.launchedAt && <div><dt>{tr('launchedAt')}</dt><dd>{date(state.launchedAt)}</dd></div>}
           </dl>
           {issues.map(issue => <p className="warning small" key={issue}>{tr(issue)}</p>)}
-          <div className="actions">{actions.map(action => { const issue = commandIssue(profile, action); return <button key={action} data-action={action} className={action === 'uninstall' ? 'danger' : action === 'launch' ? 'primary' : ''}
+          <div className="actions">{toolActions.map(action => { const issue = commandIssue(profile, action); return <button key={action} data-action={action} className={action === 'uninstall' ? 'danger' : action === 'launch' ? 'primary' : ''}
             disabled={locked || Boolean(issue)}
             title={issue ? tr(issue) : tr(`action.${action}`)}
             onClick={() => void execute(tool, action)}>{tr(`action.${action}`)}</button>; })}</div>
